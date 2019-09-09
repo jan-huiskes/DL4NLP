@@ -59,6 +59,6 @@ def get_loader(csv_path, use_cleaned=True, batch_size=100):
 
 
 if __name__ == '__main__':
-    ds = Dataset("cleaned_tweets_orig.csv")
+    ds = Dataset("../data/cleaned_tweets_orig.csv")
     t = ds[15]
     pass
