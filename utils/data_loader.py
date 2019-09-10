@@ -2,7 +2,7 @@ import torch
 import torch.utils.data as data
 import pandas as pd
 import torchtext as text
-
+from sklearn.model_selection import train_test_split
 
 class Dataset(data.Dataset):
     """
@@ -107,6 +107,22 @@ class Dataset(data.Dataset):
 
         return text_processer.vocab
 
+     def split_train_test(self):
+
+        """
+        Split data into train and test (also separating tweet and label i.e. X and y)
+        """
+
+        if self.use_cleaned:
+            X = self.df['clean_tweet']
+        else:
+            X = self.df['tweet']
+
+        y = self.df['class']
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+
+        return X_train, X_test, y_train, y_test
 
 def get_loader(csv_path, use_cleaned=True, batch_size=100):
     """
