@@ -107,7 +107,7 @@ class Dataset(data.Dataset):
 
         return text_processer.vocab
 
-     def split_train_test(self):
+    def split_train_test(self):
 
         """
         Split data into train and test (also separating tweet and label i.e. X and y)
