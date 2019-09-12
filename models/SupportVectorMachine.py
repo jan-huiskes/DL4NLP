@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv")
-    x_train, x_test, y_train, y_test = dataset.split_train_test()
+    x_train, x_test, y_train, y_test = dataset.split_train_test_scikit()
 
     classifier = BaselineClassifier()
     classifier.train(x_train, y_train)

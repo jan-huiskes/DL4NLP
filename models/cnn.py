@@ -84,7 +84,7 @@ def main():
         #get labels and max length
         max_length = 0
         for x, y in batch:
-            
+
             max_length = max(max_length, len(x))
             new_batch['y'] = torch.cat((new_batch['y'], y.view(-1,5)), 0)
 

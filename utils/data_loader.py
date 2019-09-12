@@ -9,7 +9,7 @@ class Dataset(data.Dataset):
     Dataset representing https://github.com/tpawelski/hate-speech-detection
     """
 
-    def __init__(self, csv_path, use_cleaned=True, use_embedding="None"):
+    def __init__(self, csv_path, use_cleaned=True, use_embedding="None", embedd_dim = 300, return_embedd= True):
         """
         :param csv_path: Path to csv file
         :param use_cleaned: Returns tweets without punctuation and converted to lower-case
@@ -30,16 +30,16 @@ class Dataset(data.Dataset):
                                              pad_token='<pad>', unk_token='<unk>', pad_first=False,
                                              truncate_first=False, stop_words=None,
                                              is_target=False)
-
+        self.return_embedd = return_embedd
         if use_embedding == "None":
             self._vocab = None
         elif use_embedding == "Glove":
             # Multiple versions of the GloVe embedding are available
             # Check https://pytorch.org/text/vocab.html#torchtext.vocab.Vocab.load_vectors
-            self._vocab = text.vocab.GloVe(name='6B', dim=300)
+            self._vocab = text.vocab.GloVe(name='6B', dim=embedd_dim)
         elif use_embedding == "Random":
             # Todo: Only use training data, not entire vocab
-            self._vocab = self._build_new_vocab(self.textProcesser, self.df, dim=300)
+            self._vocab = self._build_new_vocab(self.textProcesser, self.df, dim=embedd_dim)
         else:
             raise AttributeError("Value for attribute 'use_embedding' is not supported.")
 
@@ -71,7 +71,7 @@ class Dataset(data.Dataset):
         example = self.textProcesser.preprocess(example)
 
         # Numericalize (Convert it to list of indices)
-        if self.vocab:
+        if self.vocab and self.return_embedd:
             example = self.textProcesser.numericalize([example])
 
         return example, lbl
@@ -107,10 +107,28 @@ class Dataset(data.Dataset):
 
         return text_processer.vocab
 
-    def split_train_test(self):
+    def split_train_test_scikit(self):
 
         """
-        Split data into train and test (also separating tweet and label i.e. X and y)
+        Split data into train and test (also separating tweet and label i.e. X and y) for use in scikit
+        """
+
+        if self.use_cleaned:
+            X = self.df['clean_tweet']
+        else:
+            X = self.df['tweet']
+
+        y = self.df['class']
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+
+        return X_train, X_test, y_train, y_test
+
+    def split_train_test_torch(self):
+        #todo: finish
+
+        """
+        Split data into train and test (also separating tweet and label i.e. X and y) for use with torch
         """
 
         if self.use_cleaned:
@@ -166,6 +184,7 @@ if __name__ == '__main__':
     ds = Dataset("../data/cleaned_tweets_orig.csv", use_embedding="Random")
     print("Size of new vocabulary: ", len(ds.vocab))
     print("Some entries of the vocabulary: ", ds.vocab.itos[:10])
+    print("Index of <pad> is: ", ds.vocab.stoi[" <pad>"])
 
     # How to init embedding layer with vocab
     import torch.nn as nn
