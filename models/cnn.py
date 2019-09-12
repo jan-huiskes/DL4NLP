@@ -83,21 +83,22 @@ def main():
         new_batch = {"y": torch.Tensor().new_empty((0, 5))}
         #get labels and max length
         max_length = 0
-        for example in batch:
-            x, y = example['x'], example['y']
+        for x, y in batch:
+            
             max_length = max(max_length, len(x))
             new_batch['y'] = torch.cat((new_batch['y'], y.view(-1,5)), 0)
 
         #get x tensors with the same length with shape [len, batch_size]
         new_batch["x"]= torch.Tensor().new_empty((max_length, 0))
-        for example in batch:
-            x, y = example['x'], example['y']
+        for x,y in batch:
+
             x = x.to(torch.float).permute(1,0)
             x = nn.functional.pad(x, (0, max_length - x.shape[1]), mode='constant', value=0).permute(1,0)
             new_batch['x'] = torch.cat((new_batch['x'], x), 1)
 
         new_batch['x'] = new_batch['x'].to(dtype=torch.long)
-        return new_batch
+
+        return new_batch['x'] , new_batch['y']
 
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
     vocab_size = len(dataset.vocab)
@@ -113,7 +114,7 @@ def main():
         epoch_acc = 0
         model.train()
         for batch in loader:
-            x, y = batch["x"], batch["y"].to(torch.long)
+            x, y = batch[0], batch[1].to(torch.long)
             optimizer.zero_grad()
             predictions = model(x).squeeze(1)
 
