@@ -9,7 +9,7 @@ class Dataset(data.Dataset):
     Dataset representing https://github.com/tpawelski/hate-speech-detection
     """
 
-    def __init__(self, csv_path, use_cleaned=True, use_embedding="None", embedd_dim = 300, return_embedd= True):
+    def __init__(self, csv_path, use_cleaned=True, use_embedding="None", embedd_dim=300):
         """
         :param csv_path: Path to csv file
         :param use_cleaned: Returns tweets without punctuation and converted to lower-case
@@ -18,6 +18,7 @@ class Dataset(data.Dataset):
             If "Glove": Tweets are returned as a list of indices. The Glove vocabulary can
             be accessed using the .vocab property
             If "Random": Tweets are returned as a list of indices. A new vocabulary is built
+        :param embedd_dim: size of embeddings
         """
         self.df = pd.read_csv(csv_path, encoding='ISO-8859-1')
         self.use_cleaned = use_cleaned
@@ -30,16 +31,18 @@ class Dataset(data.Dataset):
                                              pad_token='<pad>', unk_token='<unk>', pad_first=False,
                                              truncate_first=False, stop_words=None,
                                              is_target=False)
-        self.return_embedd = return_embedd
+
         if use_embedding == "None":
             self._vocab = None
         elif use_embedding == "Glove":
             # Multiple versions of the GloVe embedding are available
             # Check https://pytorch.org/text/vocab.html#torchtext.vocab.Vocab.load_vectors
-            self._vocab = text.vocab.GloVe(name='6B', dim=embedd_dim)
+            self._vocab = self._build_pretrained_vocab(self.textProcesser, self.df,
+                                                       dim=embedd_dim,
+                                                       vectors=f"glove.6B.{embedd_dim}d")
         elif use_embedding == "Random":
             # Todo: Only use training data, not entire vocab
-            self._vocab = self._build_new_vocab(self.textProcesser, self.df, dim=embedd_dim)
+            self._vocab = self._build_rnd_vocab(self.textProcesser, self.df, dim=embedd_dim)
         else:
             raise AttributeError("Value for attribute 'use_embedding' is not supported.")
 
@@ -71,7 +74,7 @@ class Dataset(data.Dataset):
         example = self.textProcesser.preprocess(example)
 
         # Numericalize (Convert it to list of indices)
-        if self.vocab and self.return_embedd:
+        if self.vocab:
             example = self.textProcesser.numericalize([example])
 
         return example, lbl
@@ -88,7 +91,7 @@ class Dataset(data.Dataset):
         return self._vocab
 
     @staticmethod
-    def _build_new_vocab(text_processer: text.data.Field, df, dim):
+    def _build_rnd_vocab(text_processer: text.data.Field, df, dim):
         # Let's only use the cleaned tweets for building the vocabulary
         clean_tweets = df["clean_tweet"].values
 
@@ -104,7 +107,19 @@ class Dataset(data.Dataset):
         # std = 0.05 is based on the norm of average GloVE 100-dim word vectors
         n = torch.distributions.Normal(0, 0.05)
         text_processer.vocab.vectors = n.sample((len(text_processer.vocab), dim))
+        return text_processer.vocab
 
+    @staticmethod
+    def _build_pretrained_vocab(text_processer: text.data.Field, df, dim, vectors):
+        # Let's only use the cleaned tweets for building the vocabulary
+        clean_tweets = df["clean_tweet"].values
+
+        # Tokenize them
+        tokenized = [text_processer.preprocess(x) for x in clean_tweets]
+        text_processer.build_vocab(tokenized, max_size=None, min_freq=1,
+                                   specials=['<unk>', '<pad>'], vectors=vectors,
+                                   unk_init=None, vectors_cache=None, specials_first=True)
+        text_processer.vocab.dim = dim
         return text_processer.vocab
 
     def split_train_test_scikit(self):
