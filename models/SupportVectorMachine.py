@@ -31,7 +31,7 @@ class BaselineClassifier:
         self.max_vocab_f = max_vocab_f
         self.min_df = min_df
 
-        # parameter for logistic regression
+        # parameter for SVM
         self.alpha = alpha
 
     def train(self, x_train, y_train):
@@ -49,7 +49,7 @@ class BaselineClassifier:
         # generate term document matrix (model inputs)
         X = vec.fit_transform(tweets)
 
-        # logistic classifier
+        # SVM classifier
         classifier = SGDClassifier(loss="hinge", alpha=self.alpha).fit(X, y_train)
 
         # save the model and vectorizer
