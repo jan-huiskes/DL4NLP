@@ -3,6 +3,7 @@ import torch.utils.data as data
 import pandas as pd
 import torchtext as text
 from sklearn.model_selection import train_test_split
+from pytorch_pretrained_bert import BertTokenizer, BertModel, BertForMaskedLM
 
 class Dataset(data.Dataset):
     """
@@ -121,6 +122,14 @@ class Dataset(data.Dataset):
                                    unk_init=None, vectors_cache=None, specials_first=True)
         text_processer.vocab.dim = dim
         return text_processer.vocab
+
+    @staticmethod
+    def _build_pretrained_vocab_bert():
+
+        # Load pre-trained model tokenizer (vocabulary)
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+        return 0
 
     def split_train_test_scikit(self):
 
