@@ -9,47 +9,12 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 sys.path.append('../utils')
 
+from models import CNN, LSTM
 from data_loader import Dataset
 
 
 
 
-class CNN(nn.Module):
-
-
-    def __init__(self, vocab_size, embedding_dim=128, n_filters=50, filter_sizes=[2,3,4], output_dim=3,
-                  pad_idx=None, embedding=None):
-        super().__init__()
-
-        if embedding is None:
-            self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx = pad_idx)
-        else:
-            self.embedding = embedding
-        self.convs = nn.ModuleList([
-            nn.Conv2d(in_channels=1,
-                      out_channels=n_filters,
-                      kernel_size=(fs, embedding_dim))
-            for fs in filter_sizes
-        ])
-        self.fc = nn.Linear(len(filter_sizes) * n_filters, output_dim)
-
-    def forward(self, text):
-
-        #text = [sent len, batch size]
-        text = text.permute(1, 0)
-        #text = [batch size, sent len]
-        embedded = self.embedding(text)
-
-        #embedded = [batch size, sent len, emb dim]
-        embedded = embedded.unsqueeze(1)
-        #embedded = [batch size, 1, sent len, emb dim]
-        conved = [nn.functional.relu(conv(embedded)).squeeze(3) for conv in self.convs]
-        #conved_n = [batch size, n_filters, sent len - filter_sizes[n] + 1]
-        pooled = [nn.functional.max_pool1d(conv, conv.shape[2]).squeeze(2) for conv in conved]
-        #pooled_n = [batch size, n_filters]
-        cat = torch.cat(pooled, dim = 1)
-        #cat = [batch size, n_filters * len(filter_sizes)]
-        return self.fc(cat)
 
 
 def split_dataset(dataset, test_percentage=0.1):
@@ -162,6 +127,7 @@ def main():
     batch_size= 10
     num_epochs = 5
     embedding_dim=300
+    model_name = "LSTM" #"CNN"
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding="Random", embedd_dim=embedding_dim)
     train_data, test_data = split_dataset(dataset, test_percentage + val_percentage )
@@ -171,7 +137,10 @@ def main():
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size , collate_fn= my_collate)
     #define model
     vocab_size = len(dataset.vocab)
-    model = CNN(vocab_size, embedding_dim)
+    if model_name == "CNN":
+        model = CNN(vocab_size, embedding_dim)
+    elif model_name == "LSTM":
+        model = LSTM(vocab_size, embedding_dim, batch_size = 10)
     model.embedding.weight.data.copy_(dataset.vocab.vectors)
     #cuda
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
