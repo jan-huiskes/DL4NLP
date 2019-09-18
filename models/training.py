@@ -138,8 +138,9 @@ def main():
     num_epochs = 5
     embedding_dim=300
     model_name = "LSTM" #"CNN"
+    embedding =   "Random" #"Glove" #
     # load data
-    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding="Random", embedd_dim=embedding_dim)
+    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
 
@@ -158,9 +159,10 @@ def main():
     model.to(device)
     #optimiser
     optimizer = optim.Adam(model.parameters())
-
-    weights = torch.tensor([0.9414, 0.2242, 0.8344]) #get_loss_weights(train_data) # not to run again
-    criterion = nn.CrossEntropyLoss(weights=weights)
+    #weighted cross entropy loss, by class counts of other classess
+    weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
+    #weights = torch.tensor([1.0, 1.0, 1.0], device = device) #get_loss_weights(train_data).to(device) # not to run again
+    criterion = nn.CrossEntropyLoss(weight=weights)
 
     plot_log = defaultdict(list)
     for epoch in range(num_epochs):
