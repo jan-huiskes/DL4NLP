@@ -120,18 +120,19 @@ def save_plot(data, name, directory, is_val=False):
     plt.close()
 
 def main():
+    torch.manual_seed(42)
     #some params
     experiment_number = 1
-    test_percentage = 0.15
-    val_percentage = 0.15
+    test_percentage = 0.1
+    val_percentage = 0.2
     batch_size= 10
     num_epochs = 5
     embedding_dim=300
     model_name = "LSTM" #"CNN"
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding="Random", embedd_dim=embedding_dim)
-    train_data, test_data = split_dataset(dataset, test_percentage + val_percentage )
-    test_data, val_data = split_dataset(test_data, 0.5 )
+    train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
+    val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
     #define loaders
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size , collate_fn= my_collate)
