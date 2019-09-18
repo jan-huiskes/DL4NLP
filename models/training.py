@@ -138,7 +138,7 @@ def main():
     num_epochs = 5
     embedding_dim=300
     model_name = "LSTM" #"CNN"
-    embedding =   "Random" #"Glove" #
+    embedding =   "Glove" # "Random" # #Both
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
