@@ -32,6 +32,15 @@ def split_dataset(dataset, test_percentage=0.1):
     train_size = len(dataset) - test_size
     return torch.utils.data.random_split(dataset, [train_size, test_size])
 
+def get_loss_weights(dataset):
+    count = torch.zeros((3,1))
+    for __, y in dataset:
+        count[int(y[0].item())]+=1
+    total_count = torch.sum(count)
+    weights =  torch.tensor([(count[1]+count[2])/total_count, (count[0]+count[2])/total_count, (count[1]+count[0])/total_count])
+    print(weights)
+    return weights
+
 def accuracy(predictions, targets):
     predictions = torch.argmax(predictions, dim=1)
     return (predictions== targets).sum().to(torch.float)/predictions.shape[0]
@@ -120,18 +129,21 @@ def save_plot(data, name, directory, is_val=False):
     plt.close()
 
 def main():
+    torch.manual_seed(42)
     #some params
     experiment_number = 1
-    test_percentage = 0.15
-    val_percentage = 0.15
+    test_percentage = 0.1
+    val_percentage = 0.2
     batch_size= 10
     num_epochs = 5
     embedding_dim=300
     model_name = "LSTM" #"CNN"
+    embedding =   "Glove" # "Random" # #Both
     # load data
-    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding="Random", embedd_dim=embedding_dim)
-    train_data, test_data = split_dataset(dataset, test_percentage + val_percentage )
-    test_data, val_data = split_dataset(test_data, 0.5 )
+    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
+    train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
+    val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
+
     #define loaders
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size , collate_fn= my_collate)
@@ -147,7 +159,10 @@ def main():
     model.to(device)
     #optimiser
     optimizer = optim.Adam(model.parameters())
-    criterion = nn.CrossEntropyLoss()
+    #weighted cross entropy loss, by class counts of other classess
+    weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
+    #weights = torch.tensor([1.0, 1.0, 1.0], device = device) #get_loss_weights(train_data).to(device) # not to run again
+    criterion = nn.CrossEntropyLoss(weight=weights)
 
     plot_log = defaultdict(list)
     for epoch in range(num_epochs):
