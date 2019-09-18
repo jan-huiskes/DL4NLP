@@ -4,6 +4,9 @@ import pandas as pd
 import torchtext as text
 from sklearn.model_selection import train_test_split
 from spacy.lang.en.stop_words import STOP_WORDS
+from sklearn.model_selection import train_test_split
+from pytorch_transformers import BertTokenizer, BertConfig
+
 
 class Dataset(data.Dataset):
     """
@@ -11,7 +14,7 @@ class Dataset(data.Dataset):
     """
 
     def __init__(self, csv_path, use_cleaned=True, use_embedding="None", embedd_dim=300,
-                 rm_stop_words=False):
+                 rm_stop_words=False, for_bert=False):
         """
         :param csv_path: Path to csv file
         :param use_cleaned: Returns tweets without punctuation and converted to lower-case
@@ -27,6 +30,9 @@ class Dataset(data.Dataset):
         self.use_cleaned = use_cleaned
         self.use_embedding = use_embedding
         self.rm_stop_words = rm_stop_words
+        self.for_bert = for_bert
+        self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
+
         self.textProcesser = text.data.Field(sequential=True, use_vocab=True, init_token=None,
                                              eos_token=None, fix_length=None, dtype=torch.int64,
                                              preprocessing=None, postprocessing=None, lower=False,
@@ -74,8 +80,15 @@ class Dataset(data.Dataset):
         else:
             example = tweet
 
+        # BERT requires special tokens to work properly
+        if self.for_bert:
+            example = "[CLS] " + example + " [SEP]"
+
         # Tokenize (Convert it to list of strings)
-        example = self.textProcesser.preprocess(example)
+        if self.for_bert:
+            example = self.bert_tokenizer.tokenize(example)
+        else:
+            example = self.textProcesser.preprocess(example)
 
         # Remove Stop Words
         if self.rm_stop_words:
@@ -84,6 +97,10 @@ class Dataset(data.Dataset):
         # Numericalize (Convert it to list of indices)
         if self.vocab:
             example = self.textProcesser.numericalize([example])
+
+        # If Bert, convert the tokens to their index number in the Bert vocab
+        if self.for_bert:
+            example = self.bert_tokenizer.convert_tokens_to_ids(example)
 
         return example, lbl
 

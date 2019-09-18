@@ -7,12 +7,15 @@ import torch
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from collections import defaultdict
+
 sys.path.append('../utils')
 
 from models import CNN, LSTM
 from data_loader import Dataset
+from pytorch_transformers import AdamW, BertForSequenceClassification
 
-
+os.environ['KERAS_BACKEND'] = 'theano'
+from keras.preprocessing.sequence import pad_sequences
 
 
 
@@ -50,14 +53,17 @@ def train_epoch(model, loader, optimizer, criterion, device):
 
     model.train()
     for batch in loader:
-        x, y = batch[0].to(device), batch[1].to(torch.long).to(device)
         optimizer.zero_grad()
-        predictions = model(x).squeeze(1)
+        x, y = batch[0].to(device), batch[1].to(torch.long).to(device)
+        if type(model) is BertForSequenceClassification:
+            loss, logits = model(x, labels=y)
+            acc = accuracy(logits, y)
+        else:
+            predictions = model(x).squeeze(1)
+            loss = criterion(predictions, y[:, 0])
+            acc = accuracy(predictions, y[:, 0])
 
-        loss = criterion(predictions, y[:, 0])
-
-        acc = accuracy(predictions, y[:, 0])
-
+        print(loss.item())
         loss.backward()
 
         optimizer.step()
@@ -77,9 +83,13 @@ def evaluate_epoch(model, loader, criterion, device, is_final = False):
     with torch.no_grad():
         for batch in loader:
             x, y = batch[0].to(device), batch[1].to(torch.long).to(device)
-            predictions = model(x).squeeze(1)
-            loss = criterion(predictions, y[:, 0])
-            acc = accuracy(predictions, y[:, 0])
+            if type(model) is BertForSequenceClassification:
+                loss, logits = model(x, labels=y)
+                acc = accuracy(logits, y)
+            else:
+                predictions = model(x).squeeze(1)
+                loss = criterion(predictions, y[:, 0])
+                acc = accuracy(predictions, y[:, 0])
             eval_loss += loss.item()
             eval_acc += acc.item()
             if is_final:
@@ -121,6 +131,34 @@ def my_collate(batch):
 
     return new_batch['x'] , new_batch['y']
 
+def bert_collate(batch):
+    """
+    Collate function for Bert.
+
+    Parameters
+    ----------
+    batch : (x,y) tuple, where x is a tensor with input ids and y is a tensor with labels
+    ----------
+    Returns: (x,y) , where x has shape [sentence_length, batch_size] and y has shape [batch_size, number_of_labels]
+    """
+    # Set the maximum sequence length. In the original paper, the authors used a length of 512.
+    MAX_LEN = 64
+
+    inputs = [s[0] for s in batch]
+    labels = [s[1][0] for s in batch]
+
+    inputs_padded = pad_sequences(inputs, maxlen=MAX_LEN, dtype="long", truncating="post",
+                                  padding="post")
+    #inputs_padded = pad_sequence(inputs)
+
+    x_ids = torch.tensor(inputs_padded)
+    y = torch.tensor(labels)
+    return x_ids, y
+
+
+
+
+
 def save_plot(data, name, directory, is_val=False):
     plt.figure()
     plt.plot(data, label=f"{name}")
@@ -137,8 +175,11 @@ def main():
     batch_size= 10
     num_epochs = 5
     embedding_dim=300
-    model_name = "LSTM" #"CNN"
-    embedding =   "Glove" # "Random" # #Both
+    model_name = "Bert" #"LSTM" #"CNN"
+    embedding = "None" #"Glove" # "Random" # #Both
+    # Bert parameter
+    learning_rate = 2e-5
+
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
@@ -147,18 +188,33 @@ def main():
     #define loaders
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size , collate_fn= my_collate)
+
     #define model
-    vocab_size = len(dataset.vocab)
     if model_name == "CNN":
+        vocab_size = len(dataset.vocab)
         model = CNN(vocab_size, embedding_dim)
     elif model_name == "LSTM":
+        vocab_size = len(dataset.vocab)
         model = LSTM(vocab_size, embedding_dim, batch_size = 10)
-    model.embedding.weight.data.copy_(dataset.vocab.vectors)
+    elif model_name == "Bert":
+        model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
+                                                   collate_fn=bert_collate)
+        val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size,
+                                                 collate_fn=bert_collate)
+
+    if not model_name=="Bert":
+        model.embedding.weight.data.copy_(dataset.vocab.vectors)
     #cuda
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     #optimiser
     optimizer = optim.Adam(model.parameters())
+    if model_name=="Bert":
+        optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
+        # todo: Add scheduler
+        #scheduler = WarmupLinearSchedule(optimizer, warmup_steps=num_warmup_steps, t_total=num_total_steps)
+
     #weighted cross entropy loss, by class counts of other classess
     weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
     #weights = torch.tensor([1.0, 1.0, 1.0], device = device) #get_loss_weights(train_data).to(device) # not to run again
