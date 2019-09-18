@@ -26,6 +26,7 @@ class Dataset(data.Dataset):
         self.df = pd.read_csv(csv_path, encoding='ISO-8859-1')
         self.use_cleaned = use_cleaned
         self.use_embedding = use_embedding
+        self.rm_stop_words = rm_stop_words
         self.textProcesser = text.data.Field(sequential=True, use_vocab=True, init_token=None,
                                              eos_token=None, fix_length=None, dtype=torch.int64,
                                              preprocessing=None, postprocessing=None, lower=False,
@@ -77,7 +78,8 @@ class Dataset(data.Dataset):
         example = self.textProcesser.preprocess(example)
 
         # Remove Stop Words
-        example = [x for x in example if x not in STOP_WORDS]
+        if self.rm_stop_words:
+            example = [x for x in example if x not in STOP_WORDS]
 
         # Numericalize (Convert it to list of indices)
         if self.vocab:
