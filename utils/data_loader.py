@@ -3,13 +3,15 @@ import torch.utils.data as data
 import pandas as pd
 import torchtext as text
 from sklearn.model_selection import train_test_split
+from spacy.lang.en.stop_words import STOP_WORDS
 
 class Dataset(data.Dataset):
     """
     Dataset representing https://github.com/tpawelski/hate-speech-detection
     """
 
-    def __init__(self, csv_path, use_cleaned=True, use_embedding="None", embedd_dim=300):
+    def __init__(self, csv_path, use_cleaned=True, use_embedding="None", embedd_dim=300,
+                 rm_stop_words=False):
         """
         :param csv_path: Path to csv file
         :param use_cleaned: Returns tweets without punctuation and converted to lower-case
@@ -19,6 +21,7 @@ class Dataset(data.Dataset):
             be accessed using the .vocab property
             If "Random": Tweets are returned as a list of indices. A new vocabulary is built
         :param embedd_dim: size of embeddings
+        :param rm_stop_words: Whether stop words shall be removed from tweets
         """
         self.df = pd.read_csv(csv_path, encoding='ISO-8859-1')
         self.use_cleaned = use_cleaned
@@ -72,6 +75,9 @@ class Dataset(data.Dataset):
 
         # Tokenize (Convert it to list of strings)
         example = self.textProcesser.preprocess(example)
+
+        # Remove Stop Words
+        example = [x for x in example if x not in STOP_WORDS]
 
         # Numericalize (Convert it to list of indices)
         if self.vocab:
