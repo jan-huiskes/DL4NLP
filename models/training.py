@@ -49,7 +49,18 @@ def accuracy(predictions, targets):
     predictions = torch.argmax(predictions, dim=1)
     return (predictions== targets).sum().to(torch.float)/predictions.shape[0]
 
-def train_epoch(model, loader, optimizer, criterion, device):
+def weighted_soft_cross_entropy(scores, target, weight = [1,1,1], device = "cuda"):
+    loss = 0
+    softmax_denominator = 0
+    for x in range(scores.shape[1]):
+        softmax_denominator+=torch.exp(scores[:,x])
+    softmax_denominator = torch.log(softmax_denominator).to(device, dtype = torch.float)
+    for i in range(len(weight)):
+
+        loss+= weight[i] * target[:,i]* (-scores[:,i]+softmax_denominator)
+    return torch.sum(loss)
+
+def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False, weights = None):
     epoch_loss, epoch_acc = 0, 0
 
     model.train()
@@ -61,7 +72,12 @@ def train_epoch(model, loader, optimizer, criterion, device):
             acc = accuracy(logits, y)
         else:
             predictions = model(x).squeeze(1)
-            loss = criterion(predictions, y[:, 0])
+            if soft_labels:
+                y_new = y.to(torch.float)
+                y_new = torch.cat((y_new[:, 2]/y_new[:, 1].unsqueeze(0),  y_new[:, 3]/y_new[:, 1].unsqueeze(0), y_new[:, 4]/y_new[:, 1].unsqueeze(0)),dim=0).permute(1,0)
+                loss = criterion(predictions, y_new, weights, device)
+            else:
+                loss = criterion(predictions, y[:, 0])
             acc = accuracy(predictions, y[:, 0])
 
         #print(loss.item())
@@ -75,7 +91,7 @@ def train_epoch(model, loader, optimizer, criterion, device):
     return epoch_loss / (len(loader)), epoch_acc / (len(loader))
 
 
-def evaluate_epoch(model, loader, criterion, device, is_final = False):
+def evaluate_epoch(model, loader, criterion, device, is_final = False, soft_labels = False, weights= None):
     eval_loss, eval_acc = 0, 0
     if is_final:
         prediction_list = []
@@ -89,7 +105,12 @@ def evaluate_epoch(model, loader, criterion, device, is_final = False):
                 acc = accuracy(logits, y)
             else:
                 predictions = model(x).squeeze(1)
-                loss = criterion(predictions, y[:, 0])
+                if soft_labels:
+                    y_new = y.to(torch.float)
+                    y_new = torch.cat((y_new[:, 2]/y_new[:, 1].unsqueeze(0),  y_new[:, 3]/y_new[:, 1].unsqueeze(0), y_new[:, 4]/y_new[:, 1].unsqueeze(0)),dim=0).permute(1,0)
+                    loss = criterion(predictions, y_new, weights, device)
+                else:
+                    loss = criterion(predictions, y[:, 0])
                 acc = accuracy(predictions, y[:, 0])
             eval_loss += loss.item()
             eval_acc += acc.item()
@@ -195,7 +216,7 @@ def main():
     embedding_dim=300
     model_name = "CNN" #"CNN" #"Bert"
     embedding = "Both"#"Glove" # "Random" #
-    soft_labels = False
+    soft_labels = True
     # Bert parameter
     if model_name == "Bert":
         embedding = "None"
@@ -249,12 +270,13 @@ def main():
     weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
     #weights = torch.tensor([1.0, 1.0, 1.0], device = device) #get_loss_weights(train_data).to(device) # not to run again
     criterion = nn.CrossEntropyLoss(weight=weights)
-
+    if soft_labels:
+        criterion = weighted_soft_cross_entropy
     plot_log = defaultdict(list)
     for epoch in range(num_epochs):
         #train and validate
-        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device)
-        val_loss, val_acc = evaluate_epoch(model, val_loader, criterion, device)
+        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device, soft_labels=soft_labels, weights= weights)
+        val_loss, val_acc = evaluate_epoch(model, val_loader, criterion, device, soft_labels=soft_labels, weights= weights)
         #save for plotting
         for name, point in zip(["train_loss", "train_accuracy", "val_loss", "val_accuracy"],[epoch_loss, epoch_acc, val_loss, val_acc]):
             plot_log[f'{name}'] = point
