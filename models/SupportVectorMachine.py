@@ -80,15 +80,15 @@ class BaselineClassifier:
 if __name__ == '__main__':
 
     # load data
-    dataset = Dataset("../data/cleaned_tweets_orig.csv")
-    x_train, x_test, y_train, y_test = dataset.split_train_test_scikit()
+    train = pd.read_csv('../data/train.csv')
+    test = pd.read_csv('../data/test.csv')
 
     classifier = BaselineClassifier()
-    classifier.train(x_train, y_train)
-    scores = classifier.predict(x_test)
+    classifier.train(train['cleaned_tweet'], train['cls'])
+    scores = classifier.predict(test['cleaned_tweet'])
 
-    conf_matrix = confusion_matrix(y_test, scores)
-    class_report = classification_report(y_test, scores)
+    conf_matrix = confusion_matrix(test['cls'], scores)
+    class_report = classification_report(test['cls'], scores)
 
     print('\nCONFUSION MATRIX\n----------------\n')
     print(conf_matrix)
