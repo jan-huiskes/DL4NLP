@@ -7,6 +7,7 @@ import torch
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from collections import defaultdict
+import pandas as pd
 
 sys.path.append('../utils')
 
@@ -166,6 +167,23 @@ def save_plot(data, name, directory, is_val=False):
     plt.savefig(f"{directory}/{name}.png")
     plt.close()
 
+def save_data(data_subset, set):
+    '''
+    Helper function to get the data back into csv format (so that it can be fed to SVM)
+    '''
+
+    alldata = []
+
+    lbls = ['cleaned_tweet', 'cls', 'count', 'hate_speech', 'off_lang', 'neither']
+    for i in data_subset:
+        datalist = [" ".join(i[0])] + i[1].tolist()
+        alldata.append(datalist)
+
+    df = pd.DataFrame(alldata, columns=lbls)
+    df.to_csv(f'../data/{set}.csv')
+
+
+
 def main():
     torch.manual_seed(42)
     #some params
@@ -184,6 +202,9 @@ def main():
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
+
+    #save_data(train_data, 'train')
+    #save_data(test_data, 'test')
 
     #define loaders
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
