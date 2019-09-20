@@ -292,7 +292,7 @@ def main():
     #save model
     torch.save(model, os.path.join(results_directory, 'model_cnn.pth'))
     #confusion matrix and all that fun
-    loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True)
+    loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True, soft_labels=soft_labels,weights=weights)
     print(predictions, ground_truth)
     conf_matrix = confusion_matrix(ground_truth, predictions)
     class_report = classification_report(ground_truth, predictions)
