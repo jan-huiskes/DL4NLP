@@ -14,7 +14,7 @@ class Dataset(data.Dataset):
     """
 
     def __init__(self, csv_path, use_cleaned=True, use_embedding="None", embedd_dim=300,
-                 rm_stop_words=False, for_bert=False):
+                 rm_stop_words=False, for_bert=False, combine = False):
         """
         :param csv_path: Path to csv file
         :param use_cleaned: Returns tweets without punctuation and converted to lower-case
@@ -25,6 +25,7 @@ class Dataset(data.Dataset):
             If "Random": Tweets are returned as a list of indices. A new vocabulary is built
         :param embedd_dim: size of embeddings
         :param rm_stop_words: Whether stop words shall be removed from tweets
+        :param combine: Whether to create two embeddings
         """
         self.df = pd.read_csv(csv_path, encoding='ISO-8859-1')
         self.use_cleaned = use_cleaned
@@ -56,6 +57,11 @@ class Dataset(data.Dataset):
         else:
             raise AttributeError("Value for attribute 'use_embedding' is not supported.")
 
+
+        if combine:
+            self.glove = self._build_pretrained_vocab(self.textProcesser, self.df,
+                                                       dim=embedd_dim,
+                                                       vectors=f"glove.6B.{embedd_dim}d")
         self.textProcesser.vocab = self._vocab
 
     def __getitem__(self, index):

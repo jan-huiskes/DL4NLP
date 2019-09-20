@@ -64,7 +64,7 @@ def train_epoch(model, loader, optimizer, criterion, device):
             loss = criterion(predictions, y[:, 0])
             acc = accuracy(predictions, y[:, 0])
 
-        print(loss.item())
+        #print(loss.item())
         loss.backward()
 
         optimizer.step()
@@ -193,13 +193,21 @@ def main():
     batch_size= 10
     num_epochs = 5
     embedding_dim=300
-    model_name = "Bert" #"LSTM" #"CNN"
-    embedding = "None" #"Glove" # "Random" # #Both
+    model_name = "CNN" #"CNN" #"Bert"
+    embedding = "Both"#"Glove" # "Random" #
+    soft_labels = False
     # Bert parameter
+    if model_name == "Bert":
+        embedding = "None"
+    if embedding == "Both":
+        combine = True
+        embedding = "Random"
+    else:
+        combine =False
     learning_rate = 2e-5
 
     # load data
-    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
+    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim, combine = combine)
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
 
@@ -211,12 +219,11 @@ def main():
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size , collate_fn= my_collate)
 
     #define model
+    vocab_size = len(dataset.vocab)
     if model_name == "CNN":
-        vocab_size = len(dataset.vocab)
-        model = CNN(vocab_size, embedding_dim)
+        model = CNN(vocab_size, embedding_dim, combine=combine)
     elif model_name == "LSTM":
-        vocab_size = len(dataset.vocab)
-        model = LSTM(vocab_size, embedding_dim, batch_size = 10)
+        model = LSTM(vocab_size, embedding_dim, batch_size = batch_size, combine=combine)
     elif model_name == "Bert":
         model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
         train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
@@ -226,6 +233,8 @@ def main():
 
     if not model_name=="Bert":
         model.embedding.weight.data.copy_(dataset.vocab.vectors)
+        if combine:
+            model.embedding_glove.weight.data.copy_(dataset.glove.vectors)
     #cuda
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
