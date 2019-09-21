@@ -2,6 +2,56 @@
 import torch.nn as nn
 import torch
 
+
+# https://github.com/bastings/interpretable_predictions/tree/master/latent_rationale
+# HERE IS SOME CODE FROM THAT LINK
+class BernoulliGate(nn.Module):
+    """
+    Computes a Bernoulli Gate
+    Assigns a 0 or a 1 to each input word.
+    """
+
+    def __init__(self, in_features, out_features=1):
+        super(BernoulliGate, self).__init__()
+
+        self.layer = Sequential(
+            Linear(in_features, out_features, bias=True)
+        )
+
+    def forward(self, x):
+        """
+        Compute Binomial gate
+        :param x: word represenatations [B, T, D]
+        :return: gate distribution
+        """
+        logits = self.layer(x)  # [B, T, 1]
+        dist = Bernoulli(logits=logits)
+        return dist
+
+    def get_loss(dist, sparsity = 0.0003, coherent_factor = 2.):
+        """
+        Get loss of this NN
+        """
+
+        z = dist.sample()
+        z = z.squeeze()
+
+        logp_z0 = dist.log_prob(0.).squeeze(2)  # [B,T], log P(z = 0 | x)
+        logp_z1 = dist.log_prob(1.).squeeze(2)  # [B,T], log P(z = 1 | x)
+
+        logpz = torch.where(z == 0, logp_z0, logp_z1)
+
+                # sparsity regularization
+        zsum = z.sum(1)  # [B]
+        zdiff = z[:, 1:] - z[:, :-1]
+        zdiff = zdiff.abs().sum(1)  # [B]
+
+
+        cost_vec =  zsum * sparsity + zdiff * coherent_factor
+        cost_logpz = (cost_vec * logpz.sum(1)).mean(0)  # cost_vec is neg reward
+        return cost_logpz
+
+
 class CNN(nn.Module):
 
 
