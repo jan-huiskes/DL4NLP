@@ -215,7 +215,7 @@ def main():
     num_epochs = 5
     embedding_dim=300
     model_name = "CNN" #"CNN" #"Bert"
-    embedding = "Both"#"Glove" # "Random" #
+    embedding = "Random"#"Glove" # "Both" #
     soft_labels = True
     # Bert parameter
     if model_name == "Bert":
@@ -226,12 +226,15 @@ def main():
     else:
         combine =False
     learning_rate = 2e-5
+    oversample_bool = True
 
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim, combine = combine)
+    if oversample_bool:
+        dataset.oversample()
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
-
+    # print(len(train_data))
     #save_data(train_data, 'train')
     #save_data(test_data, 'test')
 

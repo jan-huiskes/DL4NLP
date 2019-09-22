@@ -153,6 +153,28 @@ class Dataset(data.Dataset):
         text_processer.vocab.dim = dim
         return text_processer.vocab
 
+    def oversample(self, class_0 = 6, class_2 = 2):
+
+        print("Class amount before:")
+        print(len(self.df.loc[self.df['class'] == 0]))
+        print(len(self.df.loc[self.df['class'] == 1]))
+        print(len(self.df.loc[self.df['class'] == 2]))
+
+        df_0 = self.df.loc[self.df['class'] == 0]
+        df_2 = self.df.loc[self.df['class'] == 2]
+
+        for i in range(class_0):
+            self.df = self.df.append(df_0, ignore_index=True)
+
+        for i in range(class_2):
+            self.df = self.df.append(df_2, ignore_index=True)
+
+        print("Class amount after:")
+        print(len(self.df.loc[self.df['class'] == 0]))
+        print(len(self.df.loc[self.df['class'] == 1]))
+        print(len(self.df.loc[self.df['class'] == 2]))
+
+
     def split_train_test_scikit(self):
 
         """
