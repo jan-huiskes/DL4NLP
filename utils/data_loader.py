@@ -14,7 +14,7 @@ class Dataset(data.Dataset):
     """
 
     def __init__(self, csv_path, use_cleaned=True, use_embedding="None", embedd_dim=300,
-                 rm_stop_words=False, for_bert=False):
+                 rm_stop_words=False, for_bert=False, combine = False):
         """
         :param csv_path: Path to csv file
         :param use_cleaned: Returns tweets without punctuation and converted to lower-case
@@ -25,6 +25,7 @@ class Dataset(data.Dataset):
             If "Random": Tweets are returned as a list of indices. A new vocabulary is built
         :param embedd_dim: size of embeddings
         :param rm_stop_words: Whether stop words shall be removed from tweets
+        :param combine: Whether to create two embeddings
         """
         self.df = pd.read_csv(csv_path, encoding='ISO-8859-1')
         self.use_cleaned = use_cleaned
@@ -56,6 +57,11 @@ class Dataset(data.Dataset):
         else:
             raise AttributeError("Value for attribute 'use_embedding' is not supported.")
 
+
+        if combine:
+            self.glove = self._build_pretrained_vocab(self.textProcesser, self.df,
+                                                       dim=embedd_dim,
+                                                       vectors=f"glove.6B.{embedd_dim}d")
         self.textProcesser.vocab = self._vocab
 
     def __getitem__(self, index):
@@ -146,6 +152,28 @@ class Dataset(data.Dataset):
                                    unk_init=None, vectors_cache=None, specials_first=True)
         text_processer.vocab.dim = dim
         return text_processer.vocab
+
+    def oversample(self, class_0 = 6, class_2 = 2):
+
+        print("Class amount before:")
+        print(len(self.df.loc[self.df['class'] == 0]))
+        print(len(self.df.loc[self.df['class'] == 1]))
+        print(len(self.df.loc[self.df['class'] == 2]))
+
+        df_0 = self.df.loc[self.df['class'] == 0]
+        df_2 = self.df.loc[self.df['class'] == 2]
+
+        for i in range(class_0):
+            self.df = self.df.append(df_0, ignore_index=True)
+
+        for i in range(class_2):
+            self.df = self.df.append(df_2, ignore_index=True)
+
+        print("Class amount after:")
+        print(len(self.df.loc[self.df['class'] == 0]))
+        print(len(self.df.loc[self.df['class'] == 1]))
+        print(len(self.df.loc[self.df['class'] == 2]))
+
 
     def split_train_test_scikit(self):
 

@@ -49,7 +49,18 @@ def accuracy(predictions, targets):
     predictions = torch.argmax(predictions, dim=1)
     return (predictions== targets).sum().to(torch.float)/predictions.shape[0]
 
-def train_epoch(model, loader, optimizer, criterion, device):
+def weighted_soft_cross_entropy(scores, target, weight = [1,1,1], device = "cuda"):
+    loss = 0
+    softmax_denominator = 0
+    for x in range(scores.shape[1]):
+        softmax_denominator+=torch.exp(scores[:,x])
+    softmax_denominator = torch.log(softmax_denominator).to(device, dtype = torch.float)
+    for i in range(len(weight)):
+
+        loss+= weight[i] * target[:,i]* (-scores[:,i]+softmax_denominator)
+    return torch.sum(loss)
+
+def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False, weights = None):
     epoch_loss, epoch_acc = 0, 0
 
     model.train()
@@ -61,10 +72,15 @@ def train_epoch(model, loader, optimizer, criterion, device):
             acc = accuracy(logits, y)
         else:
             predictions = model(x).squeeze(1)
-            loss = criterion(predictions, y[:, 0])
+            if soft_labels:
+                y_new = y.to(torch.float)
+                y_new = torch.cat((y_new[:, 2]/y_new[:, 1].unsqueeze(0),  y_new[:, 3]/y_new[:, 1].unsqueeze(0), y_new[:, 4]/y_new[:, 1].unsqueeze(0)),dim=0).permute(1,0)
+                loss = criterion(predictions, y_new, weights, device)
+            else:
+                loss = criterion(predictions, y[:, 0])
             acc = accuracy(predictions, y[:, 0])
 
-        print(loss.item())
+        #print(loss.item())
         loss.backward()
 
         optimizer.step()
@@ -75,7 +91,7 @@ def train_epoch(model, loader, optimizer, criterion, device):
     return epoch_loss / (len(loader)), epoch_acc / (len(loader))
 
 
-def evaluate_epoch(model, loader, criterion, device, is_final = False):
+def evaluate_epoch(model, loader, criterion, device, is_final = False, soft_labels = False, weights= None):
     eval_loss, eval_acc = 0, 0
     if is_final:
         prediction_list = []
@@ -89,7 +105,12 @@ def evaluate_epoch(model, loader, criterion, device, is_final = False):
                 acc = accuracy(logits, y)
             else:
                 predictions = model(x).squeeze(1)
-                loss = criterion(predictions, y[:, 0])
+                if soft_labels:
+                    y_new = y.to(torch.float)
+                    y_new = torch.cat((y_new[:, 2]/y_new[:, 1].unsqueeze(0),  y_new[:, 3]/y_new[:, 1].unsqueeze(0), y_new[:, 4]/y_new[:, 1].unsqueeze(0)),dim=0).permute(1,0)
+                    loss = criterion(predictions, y_new, weights, device)
+                else:
+                    loss = criterion(predictions, y[:, 0])
                 acc = accuracy(predictions, y[:, 0])
             eval_loss += loss.item()
             eval_acc += acc.item()
@@ -193,16 +214,27 @@ def main():
     batch_size= 10
     num_epochs = 5
     embedding_dim=300
-    model_name = "CNN"#"Bert" #"LSTM" #"CNN"
-    embedding = "None" #"Glove" # "Random" # #Both
+    model_name = "CNN" #"CNN" #"Bert"
+    embedding = "Random"#"Glove" # "Both" #
+    soft_labels = True
     # Bert parameter
+    if model_name == "Bert":
+        embedding = "None"
+    if embedding == "Both":
+        combine = True
+        embedding = "Random"
+    else:
+        combine =False
     learning_rate = 2e-5
+    oversample_bool = True
 
     # load data
-    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
+    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim, combine = combine)
+    if oversample_bool:
+        dataset.oversample()
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
-
+    # print(len(train_data))
     #save_data(train_data, 'train')
     #save_data(test_data, 'test')
 
@@ -211,12 +243,11 @@ def main():
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size , collate_fn= my_collate)
 
     #define model
+    vocab_size = len(dataset.vocab)
     if model_name == "CNN":
-        vocab_size = len(dataset.vocab)
-        model = CNN(vocab_size, embedding_dim)
+        model = CNN(vocab_size, embedding_dim, combine=combine)
     elif model_name == "LSTM":
-        vocab_size = len(dataset.vocab)
-        model = LSTM(vocab_size, embedding_dim, batch_size = 10)
+        model = LSTM(vocab_size, embedding_dim, batch_size = batch_size, combine=combine)
     elif model_name == "Bert":
         model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
         train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
@@ -226,6 +257,8 @@ def main():
 
     if not model_name=="Bert":
         model.embedding.weight.data.copy_(dataset.vocab.vectors)
+        if combine:
+            model.embedding_glove.weight.data.copy_(dataset.glove.vectors)
     #cuda
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -240,12 +273,13 @@ def main():
     weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
     #weights = torch.tensor([1.0, 1.0, 1.0], device = device) #get_loss_weights(train_data).to(device) # not to run again
     criterion = nn.CrossEntropyLoss(weight=weights)
-
+    if soft_labels:
+        criterion = weighted_soft_cross_entropy
     plot_log = defaultdict(list)
     for epoch in range(num_epochs):
         #train and validate
-        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device)
-        val_loss, val_acc = evaluate_epoch(model, val_loader, criterion, device)
+        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device, soft_labels=soft_labels, weights= weights)
+        val_loss, val_acc = evaluate_epoch(model, val_loader, criterion, device, soft_labels=soft_labels, weights= weights)
         #save for plotting
         for name, point in zip(["train_loss", "train_accuracy", "val_loss", "val_accuracy"],[epoch_loss, epoch_acc, val_loss, val_acc]):
             plot_log[f'{name}'] = point
@@ -261,7 +295,7 @@ def main():
     #save model
     torch.save(model, os.path.join(results_directory, 'model_cnn.pth'))
     #confusion matrix and all that fun
-    loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True)
+    loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True, soft_labels=soft_labels,weights=weights)
     print(predictions, ground_truth)
     conf_matrix = confusion_matrix(ground_truth, predictions)
     class_report = classification_report(ground_truth, predictions)
