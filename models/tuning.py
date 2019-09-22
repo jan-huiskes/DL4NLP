@@ -27,7 +27,10 @@ def train(model_name="LSTM", params=None):
     print(params)
     batch_size = params["batch_size"]
     learning_rate = params["learning_rate"]
-    num_epochs = 1
+    num_epochs = params["num_epochs"]
+    hidden_dim = params["hidden_dim"]
+    num_layers = params["num_layers"]
+
     embedding_dim = 300
     embedding = "Random"  # "Glove" # "Random" # #Both
 
@@ -49,7 +52,7 @@ def train(model_name="LSTM", params=None):
         model = CNN(vocab_size, embedding_dim)
     elif model_name == "LSTM":
         vocab_size = len(dataset.vocab)
-        model = LSTM(vocab_size, embedding_dim, batch_size=batch_size)
+        model = LSTM(vocab_size, embedding_dim, batch_size=batch_size, hidden_dim=hidden_dim, lstm_num_layers=num_layers)
     elif model_name == "Bert":
         model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
         train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
@@ -91,7 +94,11 @@ def train(model_name="LSTM", params=None):
 def tune_lstm():
 
     output_fle = open("lstm_tuning.txt", 'w')
-    grid = {'learning_rate': [2e-4, 2e-5], 'batch_size': [10, 20]}
+    grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
+            "batch_size": [16, 32],
+            "num_epochs": [1, 5],
+            "hidden_dim": [64, 128, 256],
+            "num_layers": [1,2,3]}
     best_val_f1 = 0.0
     best_params = None
     for params in ParameterGrid(grid):
@@ -103,6 +110,11 @@ def tune_lstm():
     print("Best parameters have validation F1: %f" % val_f1)
     print(best_params)
 
+    batch_size = params["batch_size"]
+    learning_rate = params["learning_rate"]
+    num_epochs = params["num_epochs"]
+    hidden_dim = params["hidden_dim"]
+    num_layers = params["num_layers"]
 
 
 
