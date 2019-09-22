@@ -26,10 +26,11 @@ def train(model_name="LSTM", params=None):
     # Parameters to tune
     print(params)
     batch_size = params["batch_size"]
-    learning_rate = params["learning_rate"]
     num_epochs = params["num_epochs"]
-    hidden_dim = params["hidden_dim"]
-    num_layers = params["num_layers"]
+    if model_name == "LSTM":
+        learning_rate = params["learning_rate"]
+        hidden_dim = params["hidden_dim"]
+        num_layers = params["num_layers"]
 
     embedding_dim = 300
     embedding = "Random"  # "Glove" # "Random" # #Both
@@ -49,7 +50,8 @@ def train(model_name="LSTM", params=None):
     # Define model
     if model_name == "CNN":
         vocab_size = len(dataset.vocab)
-        model = CNN(vocab_size, embedding_dim)
+        model = CNN(vocab_size, embedding_dim=embedding_dim, combine=params["combine"],
+                n_filters=params["filters"])
     elif model_name == "LSTM":
         vocab_size = len(dataset.vocab)
         model = LSTM(vocab_size, embedding_dim, batch_size=batch_size, hidden_dim=hidden_dim, lstm_num_layers=num_layers)
@@ -116,7 +118,31 @@ def tune_lstm():
     hidden_dim = params["hidden_dim"]
     num_layers = params["num_layers"]
 
+def tune_cnn():
 
+    output_fle = open("cnn_tuning.txt", 'w')
+    grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
+            "num_epochs": [1, 5],
+            #"embedding_dim": [64, 128, 256],
+            "combine": [True, False],
+            "batch_size": [16, 32],
+            "filters": [20,50,100]}
+    best_val_f1 = 0.0
+    best_params = None
+    for params in ParameterGrid(grid):
+        val_f1 = train("CNN", params)
+        output_fle.write(str(params) + " " + str(val_f1))
+        if val_f1 > best_val_f1:
+            best_val_f1 = val_f1
+            best_params = params
+    print("Best parameters have validation F1: %f" % val_f1)
+    print(best_params)
+
+    # batch_size = params["batch_size"]
+    # learning_rate = params["learning_rate"]
+    # num_epochs = params["num_epochs"]
+    # hidden_dim = params["hidden_dim"]
+    # num_layers = params["num_layers"]
 
 
 if __name__ == '__main__':
@@ -127,4 +153,8 @@ if __name__ == '__main__':
         model = "LSTM"
 
     if model == "LSTM":
+        print(model)
         tune_lstm()
+    elif model == "CNN":
+        print(model)
+        tune_cnn()
