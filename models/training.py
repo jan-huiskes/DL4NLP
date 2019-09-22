@@ -193,7 +193,7 @@ def main():
     batch_size= 10
     num_epochs = 5
     embedding_dim=300
-    model_name = "Bert" #"LSTM" #"CNN"
+    model_name = "CNN"#"Bert" #"LSTM" #"CNN"
     embedding = "None" #"Glove" # "Random" # #Both
     # Bert parameter
     learning_rate = 2e-5
