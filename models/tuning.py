@@ -6,6 +6,7 @@ from sklearn.model_selection import ParameterGrid
 import torch.nn as nn
 import torch
 import torch.optim as optim
+import csv
 
 from collections import defaultdict
 
@@ -13,7 +14,7 @@ sys.path.append('../utils')
 
 from models import CNN, LSTM
 from data_loader import Dataset
-from pytorch_transformers import AdamW, BertForSequenceClassification
+#from pytorch_transformers import AdamW, BertForSequenceClassification
 
 os.environ['KERAS_BACKEND'] = 'theano'
 from keras.preprocessing.sequence import pad_sequences
@@ -91,11 +92,13 @@ def train(model_name="LSTM", params=None):
     # Compute F1 score on validation set - this is what we optimise during tuning
     loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True)
     val_f1 = f1_score(y_true=ground_truth, y_pred=predictions, average="macro")
+    print("Done")
     return val_f1
 
 def tune_lstm():
 
     output_fle = open("lstm_tuning.txt", 'w')
+    file_writer = csv.writer(output_fle)
     grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
             "batch_size": [16, 32],
             "num_epochs": [1, 5],
@@ -105,7 +108,7 @@ def tune_lstm():
     best_params = None
     for params in ParameterGrid(grid):
         val_f1 = train("LSTM", params)
-        output_fle.write(str(params) + " " + str(val_f1))
+        file_writer.writerow(str(params) + " " + str(val_f1))
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
@@ -121,17 +124,18 @@ def tune_lstm():
 def tune_cnn():
 
     output_fle = open("cnn_tuning.txt", 'w')
+    file_writer = csv.writer(output_fle)
     grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
             "num_epochs": [1, 5],
             #"embedding_dim": [64, 128, 256],
-            "combine": [True, False],
+            "combine": [False],
             "batch_size": [16, 32],
             "filters": [20,50,100]}
     best_val_f1 = 0.0
     best_params = None
     for params in ParameterGrid(grid):
         val_f1 = train("CNN", params)
-        output_fle.write(str(params) + " " + str(val_f1))
+        file_writer.writerow([str(params), str(val_f1)])
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
