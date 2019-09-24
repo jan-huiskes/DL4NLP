@@ -80,7 +80,7 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
                 loss = criterion(predictions, y[:, 0])
             acc = accuracy(predictions, y[:, 0])
 
-        #print(loss.item())
+        print(loss.item())
         loss.backward()
 
         optimizer.step()
@@ -211,13 +211,15 @@ def main():
     experiment_number = 1
     test_percentage = 0.1
     val_percentage = 0.2
-    batch_size= 10
-    num_epochs = 5
+    batch_size= 16
+    num_epochs = 3
     embedding_dim=300
     model_name = "CNN" #"CNN" #"Bert"
     embedding = "Both"#"Glove" # "Random" #
     soft_labels = True
     # Bert parameter
+    num_warmup_steps = 1000
+    num_total_steps = 100
     if model_name == "Bert":
         embedding = "None"
     if embedding == "Both":
@@ -240,10 +242,11 @@ def main():
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size , collate_fn= my_collate)
 
     #define model
-    vocab_size = len(dataset.vocab)
     if model_name == "CNN":
+        vocab_size = len(dataset.vocab)
         model = CNN(vocab_size, embedding_dim, combine=combine)
     elif model_name == "LSTM":
+        vocab_size = len(dataset.vocab)
         model = LSTM(vocab_size, embedding_dim, batch_size = batch_size, combine=combine)
     elif model_name == "Bert":
         model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
