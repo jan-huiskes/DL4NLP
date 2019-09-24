@@ -8,11 +8,12 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import pandas as pd
+from tqdm import tqdm
 
 sys.path.append('../utils')
 
 from models import CNN, LSTM
-from data_loader import Dataset
+from utils.data_loader import Dataset
 from pytorch_transformers import AdamW, BertForSequenceClassification
 
 os.environ['KERAS_BACKEND'] = 'theano'
@@ -64,7 +65,7 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
     epoch_loss, epoch_acc = 0, 0
 
     model.train()
-    for batch in loader:
+    for batch in tqdm(loader):
         optimizer.zero_grad()
         x, y = batch[0].to(device), batch[1].to(torch.long).to(device)
         if type(model) is BertForSequenceClassification:
@@ -80,7 +81,6 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
                 loss = criterion(predictions, y[:, 0])
             acc = accuracy(predictions, y[:, 0])
 
-        print(loss.item())
         loss.backward()
 
         optimizer.step()
@@ -98,7 +98,7 @@ def evaluate_epoch(model, loader, criterion, device, is_final = False, soft_labe
         ground_truth = []
     model.eval()
     with torch.no_grad():
-        for batch in loader:
+        for batch in tqdm(loader):
             x, y = batch[0].to(device), batch[1].to(torch.long).to(device)
             if type(model) is BertForSequenceClassification:
                 loss, logits = model(x, labels=y)
@@ -214,8 +214,8 @@ def main():
     batch_size= 16
     num_epochs = 3
     embedding_dim=300
-    model_name = "CNN" #"CNN" #"Bert"
-    embedding = "Random"#"Glove" # "Both" #
+    model_name = 'Bert' #"CNN" #"CNN"
+    embedding = "None" #"Random"#"Glove" # "Both" #
     soft_labels = True
     # Bert parameter
     num_warmup_steps = 1000
@@ -231,7 +231,8 @@ def main():
     oversample_bool = True
 
     # load data
-    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim, combine = combine)
+    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding,
+                      embedd_dim=embedding_dim, combine=combine, for_bert=(model_name=="Bert"))
     if oversample_bool:
         dataset.oversample()
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
