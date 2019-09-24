@@ -13,8 +13,8 @@ from tqdm import tqdm
 sys.path.append('../utils')
 
 from models import CNN, LSTM
-from utils.data_loader import Dataset
-from pytorch_transformers import AdamW, BertForSequenceClassification
+from data_loader import Dataset
+from pytorch_transformers import AdamW, BertForSequenceClassification, WarmupLinearSchedule
 
 os.environ['KERAS_BACKEND'] = 'theano'
 from keras.preprocessing.sequence import pad_sequences
@@ -61,7 +61,7 @@ def weighted_soft_cross_entropy(scores, target, weight = [1,1,1], device = "cuda
         loss+= weight[i] * target[:,i]* (-scores[:,i]+softmax_denominator)
     return torch.sum(loss)
 
-def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False, weights = None):
+def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False, weights = None, scheduler=None):
     epoch_loss, epoch_acc = 0, 0
 
     model.train()
@@ -84,6 +84,8 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
         loss.backward()
 
         optimizer.step()
+        if scheduler:
+            scheduler.step()
 
         epoch_loss += loss.item()
         epoch_acc += acc.item()
@@ -216,7 +218,7 @@ def main():
     embedding_dim=300
     model_name = 'Bert' #"CNN" #"CNN"
     embedding = "None" #"Random"#"Glove" # "Both" #
-    soft_labels = True
+    soft_labels = False
     # Bert parameter
     num_warmup_steps = 1000
     num_total_steps = 100
@@ -227,7 +229,7 @@ def main():
         embedding = "Random"
     else:
         combine =False
-    learning_rate = 2e-5
+    learning_rate = 5e-5 #5e-5, 3e-5, 2e-5
     oversample_bool = True
 
     # load data
@@ -270,8 +272,8 @@ def main():
     optimizer = optim.Adam(model.parameters())
     if model_name=="Bert":
         optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
-        # todo: Add scheduler
-        #scheduler = WarmupLinearSchedule(optimizer, warmup_steps=num_warmup_steps, t_total=num_total_steps)
+        # Linear scheduler for adaptive lr
+        scheduler = WarmupLinearSchedule(optimizer, warmup_steps=num_warmup_steps, t_total=num_total_steps)
 
     #weighted cross entropy loss, by class counts of other classess
     weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
@@ -282,7 +284,9 @@ def main():
     plot_log = defaultdict(list)
     for epoch in range(num_epochs):
         #train and validate
-        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device, soft_labels=soft_labels, weights= weights)
+        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device,
+                                            soft_labels=soft_labels, weights= weights,
+                                            scheduler=scheduler)
         val_loss, val_acc = evaluate_epoch(model, val_loader, criterion, device, soft_labels=soft_labels, weights= weights)
         #save for plotting
         for name, point in zip(["train_loss", "train_accuracy", "val_loss", "val_accuracy"],[epoch_loss, epoch_acc, val_loss, val_acc]):
