@@ -6,6 +6,7 @@ from sklearn.model_selection import ParameterGrid
 import torch.nn as nn
 import torch
 import torch.optim as optim
+import csv
 
 from collections import defaultdict
 
@@ -13,7 +14,7 @@ sys.path.append('../utils')
 
 from models import CNN, LSTM
 from data_loader import Dataset
-from pytorch_transformers import AdamW, BertForSequenceClassification
+#from pytorch_transformers import AdamW, BertForSequenceClassification
 
 os.environ['KERAS_BACKEND'] = 'theano'
 from keras.preprocessing.sequence import pad_sequences
@@ -26,8 +27,12 @@ def train(model_name="LSTM", params=None):
     # Parameters to tune
     print(params)
     batch_size = params["batch_size"]
-    learning_rate = params["learning_rate"]
-    num_epochs = 1
+    num_epochs = params["num_epochs"]
+    if model_name == "LSTM":
+        learning_rate = params["learning_rate"]
+        hidden_dim = params["hidden_dim"]
+        num_layers = params["num_layers"]
+
     embedding_dim = 300
     embedding = "Random"  # "Glove" # "Random" # #Both
 
@@ -46,10 +51,11 @@ def train(model_name="LSTM", params=None):
     # Define model
     if model_name == "CNN":
         vocab_size = len(dataset.vocab)
-        model = CNN(vocab_size, embedding_dim)
+        model = CNN(vocab_size, embedding_dim=embedding_dim, combine=params["combine"],
+                n_filters=params["filters"])
     elif model_name == "LSTM":
         vocab_size = len(dataset.vocab)
-        model = LSTM(vocab_size, embedding_dim, batch_size=batch_size)
+        model = LSTM(vocab_size, embedding_dim, batch_size=batch_size, hidden_dim=hidden_dim, lstm_num_layers=num_layers)
     elif model_name == "Bert":
         model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
         train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
@@ -86,25 +92,61 @@ def train(model_name="LSTM", params=None):
     # Compute F1 score on validation set - this is what we optimise during tuning
     loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True)
     val_f1 = f1_score(y_true=ground_truth, y_pred=predictions, average="macro")
+    print("Done")
     return val_f1
 
 def tune_lstm():
 
     output_fle = open("lstm_tuning.txt", 'w')
-    grid = {'learning_rate': [2e-4, 2e-5], 'batch_size': [10, 20]}
+    file_writer = csv.writer(output_fle)
+    grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
+            "batch_size": [16, 32],
+            "num_epochs": [1, 5],
+            "hidden_dim": [64, 128, 256],
+            "num_layers": [1,2,3]}
     best_val_f1 = 0.0
     best_params = None
     for params in ParameterGrid(grid):
         val_f1 = train("LSTM", params)
-        output_fle.write(str(params) + " " + str(val_f1))
+        file_writer.writerow(str(params) + " " + str(val_f1))
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
     print("Best parameters have validation F1: %f" % val_f1)
     print(best_params)
 
+    batch_size = params["batch_size"]
+    learning_rate = params["learning_rate"]
+    num_epochs = params["num_epochs"]
+    hidden_dim = params["hidden_dim"]
+    num_layers = params["num_layers"]
 
+def tune_cnn():
 
+    output_fle = open("cnn_tuning.txt", 'w')
+    file_writer = csv.writer(output_fle)
+    grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
+            "num_epochs": [1, 5],
+            #"embedding_dim": [64, 128, 256],
+            "combine": [False],
+            "batch_size": [16, 32],
+            "filters": [20,50,100]}
+    best_val_f1 = 0.0
+    best_params = None
+    for params in ParameterGrid(grid):
+        val_f1 = train("CNN", params)
+        file_writer.writerow([str(params), str(val_f1)])
+        if val_f1 > best_val_f1:
+            best_val_f1 = val_f1
+            best_params = params
+    print("Best parameters have validation F1: %f" % val_f1)
+    print(best_params)
+
+    # batch_size = params["batch_size"]
+    # learning_rate = params["learning_rate"]
+    # num_epochs = params["num_epochs"]
+    # hidden_dim = params["hidden_dim"]
+    # num_layers = params["num_layers"]
 
 
 if __name__ == '__main__':
@@ -115,4 +157,8 @@ if __name__ == '__main__':
         model = "LSTM"
 
     if model == "LSTM":
+        print(model)
         tune_lstm()
+    elif model == "CNN":
+        print(model)
+        tune_cnn()

@@ -63,9 +63,9 @@ class CNN(nn.Module):
             self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx = pad_idx)
         else:
             self.embedding = embedding
+        self.combine = combine
         if combine:
             in_channels = 2
-            self.combine = True
             self.embedding_glove = nn.Embedding(vocab_size, embedding_dim, padding_idx = pad_idx)
         self.convs = nn.ModuleList([
             nn.Conv2d(in_channels=in_channels,
@@ -74,6 +74,8 @@ class CNN(nn.Module):
             for fs in filter_sizes
         ])
         self.fc = nn.Linear(len(filter_sizes) * n_filters, output_dim)
+
+
 
     def forward(self, text):
 
