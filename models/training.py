@@ -117,8 +117,12 @@ def evaluate_epoch(model, loader, criterion, device, is_final = False, soft_labe
             eval_loss += loss.item()
             eval_acc += acc.item()
             if is_final:
-                prediction_list+= list(torch.argmax(predictions, dim=1).detach().cpu().numpy())
-                ground_truth+= list(y[:, 0].detach().cpu().numpy())
+                if type(model) is BertForSequenceClassification:
+                    prediction_list += list(torch.argmax(logits, dim=1).detach().cpu().numpy())
+                    ground_truth += list(y.detach().cpu().numpy())
+                else:
+                    prediction_list+= list(torch.argmax(predictions, dim=1).detach().cpu().numpy())
+                    ground_truth+= list(y[:, 0].detach().cpu().numpy())
     if is_final:
         return  eval_loss / (len(loader)), eval_acc / (len(loader)), prediction_list, ground_truth
     return eval_loss / (len(loader)), eval_acc / (len(loader))
@@ -214,7 +218,7 @@ def main():
     test_percentage = 0.1
     val_percentage = 0.2
     batch_size= 16
-    num_epochs = 3
+    num_epochs = 5
     embedding_dim=300
     model_name = 'Bert' #"CNN" #"CNN"
     embedding = "None" #"Random"#"Glove" # "Both" #
@@ -230,7 +234,7 @@ def main():
     else:
         combine =False
     learning_rate = 5e-5 #5e-5, 3e-5, 2e-5
-    oversample_bool = True
+    oversample_bool = False
 
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding,
