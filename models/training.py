@@ -41,6 +41,7 @@ def get_loss_weights(dataset):
     count = torch.zeros((3,1))
     for __, y in dataset:
         count[int(y[0].item())]+=1
+    print(count)
     total_count = torch.sum(count)
     weights =  torch.tensor([(count[1]+count[2])/total_count, (count[0]+count[2])/total_count, (count[1]+count[0])/total_count])
     print(weights)
@@ -220,7 +221,7 @@ def main():
     batch_size= 16
     num_epochs = 5
     embedding_dim=300
-    model_name = 'Bert' #"CNN" #"CNN"
+    model_name = "CNN"#'Bert' #"CNN" #"LSTM"
     embedding = "None" #"Random"#"Glove" # "Both" #
     soft_labels = False
     # Bert parameter
@@ -239,16 +240,25 @@ def main():
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding,
                       embedd_dim=embedding_dim, combine=combine, for_bert=(model_name=="Bert"))
-    if oversample_bool:
-        dataset.oversample()
+
+
+        #dataset.oversample()
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
+    get_loss_weights(train_data)
+
     # print(len(train_data))
     #save_data(train_data, 'train')
     #save_data(test_data, 'test')
 
     #define loaders
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
+    if oversample_bool:
+        class_sample_count = [1024, 13426, 2898] # dataset has 10 class-1 samples, 1 class-2 samples, etc.
+        oversample_weights = 1 / torch.Tensor(class_sample_count)
+        sampler = torch.utils.data.sampler.WeightedRandomSampler(oversample_weights, batch_size)
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate, sampler=sampler)
+    else:
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size , collate_fn= my_collate)
 
     #define model
