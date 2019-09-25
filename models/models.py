@@ -14,8 +14,8 @@ class BernoulliGate(nn.Module):
     def __init__(self, in_features, out_features=1):
         super(BernoulliGate, self).__init__()
 
-        self.layer = Sequential(
-            Linear(in_features, out_features, bias=True)
+        self.layer = nn.Sequential(
+            nn.Linear(in_features, out_features, bias=True)
         )
 
     def forward(self, x):
@@ -25,7 +25,7 @@ class BernoulliGate(nn.Module):
         :return: gate distribution
         """
         logits = self.layer(x)  # [B, T, 1]
-        dist = Bernoulli(logits=logits)
+        dist = torch.Bernoulli(logits=logits)
         return dist
 
     def get_loss(dist, sparsity = 0.0003, coherent_factor = 2.):

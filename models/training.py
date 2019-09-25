@@ -37,15 +37,21 @@ def split_dataset(dataset, test_percentage=0.1):
     train_size = len(dataset) - test_size
     return torch.utils.data.random_split(dataset, [train_size, test_size])
 
-def get_loss_weights(dataset):
+def get_loss_weights(dataset, return_targets = False):
     count = torch.zeros((3,1))
+    targets = []
     for __, y in dataset:
         count[int(y[0].item())]+=1
+        if return_targets:
+            targets.append(y[0])
     print(count)
     total_count = torch.sum(count)
     weights =  torch.tensor([(count[1]+count[2])/total_count, (count[0]+count[2])/total_count, (count[1]+count[0])/total_count])
     print(weights)
-    return weights
+    if not return_targets:
+        return weights
+    else:
+        return weights, targets
 
 def accuracy(predictions, targets):
     predictions = torch.argmax(predictions, dim=1)
@@ -236,7 +242,7 @@ def main():
         combine =False
     learning_rate = 5e-5 #5e-5, 3e-5, 2e-5
     oversample_bool = True
-
+    weighted_loss = True
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding,
                       embedd_dim=embedding_dim, combine=combine ,for_bert=(model_name=="Bert"))
@@ -249,13 +255,14 @@ def main():
     # print(len(train_data))
     #save_data(train_data, 'train')
     #save_data(test_data, 'test')
-
+    weights, targets = get_loss_weights(train_data, return_targets = True)
     #define loaders
     if oversample_bool:
-        class_sample_count = [1024, 13426, 2898] # dataset has 10 class-1 samples, 1 class-2 samples, etc.
+        class_sample_count = [1024/20, 13426, 2898/2] # dataset has 10 class-1 samples, 1 class-2 samples, etc.
         oversample_weights = 1 / torch.Tensor(class_sample_count)
-        #oversample_weights = torch.ones((3))-torch.tensor([0.9414, 0.2242, 0.8344])
-        sampler = torch.utils.data.sampler.WeightedRandomSampler(oversample_weights, batch_size)
+        oversample_weights = oversample_weights[targets]
+       # oversample_weights = torch.tensor([0.9414, 0.2242, 0.8344]) #torch.ones((3))-
+        sampler = torch.utils.data.sampler.WeightedRandomSampler(oversample_weights, len(oversample_weights))
         train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate, sampler=sampler)
     else:
         train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
@@ -292,7 +299,10 @@ def main():
         scheduler = None
 
     #weighted cross entropy loss, by class counts of other classess
-    weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
+    if weighted_loss:
+        weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
+    else:
+        weights = torch.ones(3, device = device)
     #weights = torch.tensor([1.0, 1.0, 1.0], device = device) #get_loss_weights(train_data).to(device) # not to run again
     criterion = nn.CrossEntropyLoss(weight=weights)
     if soft_labels:
