@@ -40,7 +40,7 @@ def load_data(oversample, train_data, val_data, batch_size):
 
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, collate_fn=my_collate)
 
-    return train_loader, val_loader
+    return train_loader, val_loader, weights
 
 def train(model_name="LSTM", params=None, embedding="Random"):
 
@@ -68,7 +68,7 @@ def train(model_name="LSTM", params=None, embedding="Random"):
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
-    train_loader, val_loader = load_data(oversample, train_data, val_data, batch_size)
+    train_loader, val_loader, weights = load_data(oversample, train_data, val_data, batch_size)
 
     # Define model
     if model_name == "CNN":
@@ -104,28 +104,29 @@ def train(model_name="LSTM", params=None, embedding="Random"):
 
     # weighted cross entropy loss, by class counts of other classess
     weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
-    criterion = nn.CrossEntropyLoss(weight=weights)
+    if soft_labels:
+        criterion = weighted_soft_cross_entropy
+    else:
+        criterion = nn.CrossEntropyLoss(weight=weights)
+    eval_criterion = nn.CrossEntropyLoss(weight=weights)
 
     for epoch in range(num_epochs):
         # train
-        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device, soft_labels=soft_labels)
+        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device, soft_labels=soft_labels,
+                                            weights=weights)
 
         # realtime feel
         print(f'Epoch: {epoch+1}')
         print(f'\tTrain Loss: {epoch_loss:.5f} | Train Acc: {epoch_acc*100:.2f}%')
 
     # Compute F1 score on validation set - this is what we optimise during tuning
-    loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True)
+    loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, eval_criterion, device, is_final=True)
     val_f1 = f1_score(y_true=ground_truth, y_pred=predictions, average="macro")
     print("Done")
     return val_f1
 
 
 def tune_lstm(embeddings):
-    # with open('somefile.txt', 'w+') as f:
-    #     # Note that f has now been truncated to 0 bytes, so you'll only
-    #     # be able to read data that you write after this point
-    #     f.write('somedata\n')
 
     output_file_name = "lstm_tuning_" + embeddings + ".txt"
 
