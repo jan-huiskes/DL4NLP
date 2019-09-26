@@ -83,6 +83,7 @@ def train(model_name="LSTM", params=None, embedding="Random"):
         model = CNN(vocab_size, embedding_dim=embedding_dim, combine=params["combine"],
                 n_filters=params["filters"])
     elif model_name == "LSTM":
+
         vocab_size = len(dataset.vocab)
         model = LSTM(vocab_size, embedding_dim, batch_size=batch_size, hidden_dim=hidden_dim, lstm_num_layers=num_layers,
                      combine=combine, dropout=dropout)
@@ -101,7 +102,9 @@ def train(model_name="LSTM", params=None, embedding="Random"):
     model.to(device)
 
     # optimiser
+    scheduler = None
     optimizer = optim.Adam(model.parameters(), lr=params["learning_rate"])
+
     if model_name=="Bert":
         optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
         # Linear scheduler for adaptive lr
@@ -154,7 +157,7 @@ def tune_lstm(embeddings):
             "num_layers": [1, 2, 3],
             "oversample": [True],
             "dropout": [0, 0.5],
-            "soft_labels": [True, False]}
+            "soft_labels": [False]}
 
     best_val_f1 = 0.0
     best_params = None
