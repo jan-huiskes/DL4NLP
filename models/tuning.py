@@ -22,7 +22,7 @@ from keras.preprocessing.sequence import pad_sequences
 from training import *
 
 
-def load_data(oversample, train_data, val_data, batch_size):
+def load_data(oversample, train_data, val_data, batch_size, collate_fn=my_collate):
     """
     Helper function for loading data, with oversample (True or False) and batch_size as parameter.
     """
@@ -33,12 +33,12 @@ def load_data(oversample, train_data, val_data, batch_size):
         oversample_weights = oversample_weights[targets]
         # oversample_weights = torch.tensor([0.9414, 0.2242, 0.8344]) #torch.ones((3))-
         sampler = torch.utils.data.sampler.WeightedRandomSampler(oversample_weights, len(oversample_weights))
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=my_collate,
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=collate_fn,
                                                    sampler=sampler)
     else:
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=my_collate)
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=collate_fn)
 
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, collate_fn=my_collate)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, collate_fn=collate_fn)
 
     return train_loader, val_loader, weights
 
@@ -59,13 +59,20 @@ def train(model_name="LSTM", params=None, embedding="Random"):
 
     embedding_dim = 300
 
+    if model_name == "Bert":
+        learning_rate = params["learning_rate"]
+        num_warmup_steps = params["num_warmup_steps"]
+        num_total_steps = params["num_total_steps"]
+        embedding = "None"
+
     # Constants
     test_percentage = 0.1
     val_percentage = 0.2
 
     # Load data
     torch.manual_seed(42)
-    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
+    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim,
+                      for_bert=(model_name=="Bert"))
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
     train_loader, val_loader, weights = load_data(oversample, train_data, val_data, batch_size)
@@ -81,10 +88,8 @@ def train(model_name="LSTM", params=None, embedding="Random"):
                      combine=combine, dropout=dropout)
     elif model_name == "Bert":
         model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
-                                                   collate_fn=bert_collate)
-        val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size,
-                                                 collate_fn=bert_collate)
+        train_loader, val_loader, weights = load_data(oversample, train_data, val_data, batch_size,
+                                             collate_fn=bert_collate)
 
     if not model_name == "Bert":
         model.embedding.weight.data.copy_(dataset.vocab.vectors)
@@ -96,11 +101,12 @@ def train(model_name="LSTM", params=None, embedding="Random"):
     model.to(device)
 
     # optimiser
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=params["learning_rate"])
     if model_name=="Bert":
         optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
-        # todo: Add scheduler
-        #scheduler = WarmupLinearSchedule(optimizer, warmup_steps=num_warmup_steps, t_total=num_total_steps)
+        # Linear scheduler for adaptive lr
+        scheduler = WarmupLinearSchedule(optimizer, warmup_steps=num_warmup_steps,
+                                         t_total=num_total_steps)
 
     # weighted cross entropy loss, by class counts of other classess
     weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
@@ -112,8 +118,8 @@ def train(model_name="LSTM", params=None, embedding="Random"):
 
     for epoch in range(num_epochs):
         # train
-        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device, soft_labels=soft_labels,
-                                            weights=weights)
+        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device,
+                                            scheduler=scheduler, weights=weights)
 
         # realtime feel
         print(f'Epoch: {epoch+1}')
@@ -127,6 +133,10 @@ def train(model_name="LSTM", params=None, embedding="Random"):
 
 
 def tune_lstm(embeddings):
+    # with open('somefile.txt', 'w+') as f:
+    #     # Note that f has now been truncated to 0 bytes, so you'll only
+    #     # be able to read data that you write after this point
+    #     f.write('somedata\n')
 
     output_file_name = "lstm_tuning_" + embeddings + ".txt"
 
@@ -175,11 +185,38 @@ def tune_cnn():
     best_params = None
     for params in ParameterGrid(grid):
         val_f1 = train("CNN", params)
-        file_writer.writerow([str(params), str(val_f1)])
+        print(f'Current params have F1 of {val_f1}')
+        with open("cnn_tuning.txt", 'w') as output_fle:
+            file_writer = csv.writer(output_fle)
+            file_writer.writerow([str(params), str(val_f1)])
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
     print("Best parameters have validation F1: %f" % best_val_f1)
+    print(best_params)
+
+
+def tune_bert():
+    output_fle = open("bert_tuning.txt", 'w')
+    file_writer = csv.writer(output_fle)
+    grid = {"learning_rate": [3e-5, 2e-5],
+            "num_epochs": [3],
+            "batch_size": [32],
+            "oversample": [True, False],
+            "num_warmup_steps": [100],
+            "num_total_steps": [1000]
+    }
+    best_val_f1 = 0.0
+    best_params = None
+    for params in ParameterGrid(grid):
+        val_f1 = train("Bert", params)
+        file_writer.writerow([str(params), str(val_f1)])
+        print("Val. F1: ", val_f1)
+        print("=" * 30)
+        if val_f1 > best_val_f1:
+            best_val_f1 = val_f1
+            best_params = params
+    print("Best parameters have validation F1: %f" % val_f1)
     print(best_params)
 
 

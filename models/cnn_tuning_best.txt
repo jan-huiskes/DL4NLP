@@ -1,0 +1,3 @@
+Initial best
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.005, 'num_epochs': 5}
+Current params have F1 of 0.7021434122426916

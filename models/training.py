@@ -37,7 +37,7 @@ def split_dataset(dataset, test_percentage=0.1):
     train_size = len(dataset) - test_size
     return torch.utils.data.random_split(dataset, [train_size, test_size])
 
-def get_loss_weights(dataset, return_targets = False):
+def get_loss_weights(dataset, return_targets=False):
     count = torch.zeros((3,1))
     targets = []
     for __, y in dataset:
@@ -231,8 +231,8 @@ def main():
     embedding = "Random" #"Random"#"Glove" # "Both" #
     soft_labels = False
     # Bert parameter
-    num_warmup_steps = 1000
-    num_total_steps = 100
+    num_warmup_steps = 100
+    num_total_steps = 1000
     if model_name == "Bert":
         embedding = "None"
     if embedding == "Both":

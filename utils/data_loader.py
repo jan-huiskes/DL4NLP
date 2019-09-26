@@ -14,7 +14,7 @@ class Dataset(data.Dataset):
     """
 
     def __init__(self, csv_path, use_cleaned=True, use_embedding="None", embedd_dim=300,
-                 rm_stop_words=False, for_bert=False, combine = False):
+                 rm_stop_words=False, for_bert=False, combine=False):
         """
         :param csv_path: Path to csv file
         :param use_cleaned: Returns tweets without punctuation and converted to lower-case
