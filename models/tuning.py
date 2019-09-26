@@ -22,19 +22,41 @@ from keras.preprocessing.sequence import pad_sequences
 from training import *
 
 
-def train(model_name="LSTM", params=None):
+def load_data(oversample, train_data, val_data, batch_size):
+    """
+    Helper function for loading data, with oversample (True or False) and batch_size as parameter.
+    """
+    weights, targets = get_loss_weights(train_data, return_targets=True)
+    if oversample:
+        class_sample_count = [1024 / 20, 13426, 2898 / 2]  # dataset has 10 class-1 samples, 1 class-2 samples, etc.
+        oversample_weights = 1 / torch.Tensor(class_sample_count)
+        oversample_weights = oversample_weights[targets]
+        # oversample_weights = torch.tensor([0.9414, 0.2242, 0.8344]) #torch.ones((3))-
+        sampler = torch.utils.data.sampler.WeightedRandomSampler(oversample_weights, len(oversample_weights))
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=my_collate,
+                                                   sampler=sampler)
+    else:
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=my_collate)
+
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, collate_fn=my_collate)
+
+    return train_loader, val_loader
+
+def train(model_name="LSTM", params=None, embedding="Random"):
 
     # Parameters to tune
     print(params)
     batch_size = params["batch_size"]
     num_epochs = params["num_epochs"]
+    oversample = params["oversample"]
     if model_name == "LSTM":
         learning_rate = params["learning_rate"]
         hidden_dim = params["hidden_dim"]
         num_layers = params["num_layers"]
+        dropout = params["dropout"]
+        combine = embedding == "Both"
 
     embedding_dim = 300
-    embedding = "Random"  # "Glove" # "Random" # #Both
 
     # Constants
     test_percentage = 0.1
@@ -45,8 +67,7 @@ def train(model_name="LSTM", params=None):
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size , collate_fn= my_collate)
+    train_loader, val_loader = load_data(oversample, train_data, val_data, batch_size)
 
     # Define model
     if model_name == "CNN":
@@ -55,7 +76,8 @@ def train(model_name="LSTM", params=None):
                 n_filters=params["filters"])
     elif model_name == "LSTM":
         vocab_size = len(dataset.vocab)
-        model = LSTM(vocab_size, embedding_dim, batch_size=batch_size, hidden_dim=hidden_dim, lstm_num_layers=num_layers)
+        model = LSTM(vocab_size, embedding_dim, batch_size=batch_size, hidden_dim=hidden_dim, lstm_num_layers=num_layers,
+                     combine=combine, dropout=dropout)
     elif model_name == "Bert":
         model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
         train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
@@ -63,8 +85,10 @@ def train(model_name="LSTM", params=None):
         val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size,
                                                  collate_fn=bert_collate)
 
-    if not model_name=="Bert":
+    if not model_name == "Bert":
         model.embedding.weight.data.copy_(dataset.vocab.vectors)
+        if combine:
+            model.embedding_glove.weight.data.copy_(dataset.glove.vectors)
 
     # cuda
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -95,31 +119,44 @@ def train(model_name="LSTM", params=None):
     print("Done")
     return val_f1
 
-def tune_lstm():
 
-    output_fle = open("lstm_tuning.txt", 'a')
-    file_writer = csv.writer(output_fle)
-    grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
-            "batch_size": [16, 32],
-            "num_epochs": [1, 5],
-            "hidden_dim": [64, 128, 256],
-            "num_layers": [1,2,3]}
+def tune_lstm(embeddings):
+    # with open('somefile.txt', 'w+') as f:
+    #     # Note that f has now been truncated to 0 bytes, so you'll only
+    #     # be able to read data that you write after this point
+    #     f.write('somedata\n')
+
+    output_file_name = "lstm_tuning_" + embeddings + ".txt"
+
+    # Overwrite
+    output_file = open(output_file_name, 'w')
+    output_file.close()
+
+    # Start writing
+    output_file = open(output_file_name, 'a')
+
+    grid = {"learning_rate": [0.0001, 0.001, 0.01, 0.1],
+            "batch_size": [32],
+            "num_epochs": [1],
+            "hidden_dim": [128, 256],
+            "num_layers": [1, 2, 3],
+            "oversample": [True, False],
+            "dropout": [0, 0.5]}
+
     best_val_f1 = 0.0
     best_params = None
     for params in ParameterGrid(grid):
-        val_f1 = train("LSTM", params)
-        file_writer.writerow(str(params) + " " + str(val_f1))
+        val_f1 = train("LSTM", params, embeddings)
+        #file_writer.writerow([str(params), str(val_f1)])
+        output_file.write(str(val_f1) + " - " + str(params) + "\n")
+        output_file.flush()
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
-    print("Best parameters have validation F1: %f" % val_f1)
+    print("Best parameters have validation F1: %f" % best_val_f1)
     print(best_params)
+    output_file.close()
 
-    batch_size = params["batch_size"]
-    learning_rate = params["learning_rate"]
-    num_epochs = params["num_epochs"]
-    hidden_dim = params["hidden_dim"]
-    num_layers = params["num_layers"]
 
 def tune_cnn():
     grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
@@ -139,26 +176,22 @@ def tune_cnn():
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
-    print("Best parameters have validation F1: %f" % val_f1)
+    print("Best parameters have validation F1: %f" % best_val_f1)
     print(best_params)
-
-    # batch_size = params["batch_size"]
-    # learning_rate = params["learning_rate"]
-    # num_epochs = params["num_epochs"]
-    # hidden_dim = params["hidden_dim"]
-    # num_layers = params["num_layers"]
 
 
 if __name__ == '__main__':
     # Specify model as command line argument
     if len(sys.argv) > 1:
         model = sys.argv[1]
+        embedding = sys.argv[2] # can be Random, Glove, or Both
     else:
         model = "LSTM"
+        embedding = "Random"
 
     if model == "LSTM":
         print(model)
-        tune_lstm()
+        tune_lstm(embedding)
     elif model == "CNN":
         print(model)
         tune_cnn()
