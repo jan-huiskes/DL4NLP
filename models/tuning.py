@@ -127,8 +127,14 @@ def tune_lstm(embeddings):
     #     f.write('somedata\n')
 
     output_file_name = "lstm_tuning_" + embeddings + ".txt"
+
+    # Overwrite
     output_file = open(output_file_name, 'w')
-    file_writer = csv.writer(output_file)
+    output_file.close()
+
+    # Start writing
+    output_file = open(output_file_name, 'a')
+
     grid = {"learning_rate": [0.0001, 0.001, 0.01, 0.1],
             "batch_size": [32],
             "num_epochs": [1],
@@ -141,12 +147,15 @@ def tune_lstm(embeddings):
     best_params = None
     for params in ParameterGrid(grid):
         val_f1 = train("LSTM", params, embeddings)
-        file_writer.writerow([str(params), str(val_f1)])
+        #file_writer.writerow([str(params), str(val_f1)])
+        output_file.write(str(val_f1) + " - " + str(params) + "\n")
+        output_file.flush()
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
     print("Best parameters have validation F1: %f" % best_val_f1)
     print(best_params)
+    output_file.close()
 
 
 def tune_cnn():
