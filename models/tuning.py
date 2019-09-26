@@ -49,6 +49,7 @@ def train(model_name="LSTM", params=None, embedding="Random"):
     batch_size = params["batch_size"]
     num_epochs = params["num_epochs"]
     oversample = params["oversample"]
+    soft_labels = params["soft_labels"]
     if model_name == "LSTM":
         learning_rate = params["learning_rate"]
         hidden_dim = params["hidden_dim"]
@@ -107,7 +108,7 @@ def train(model_name="LSTM", params=None, embedding="Random"):
 
     for epoch in range(num_epochs):
         # train
-        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device)
+        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device, soft_labels=soft_labels)
 
         # realtime feel
         print(f'Epoch: {epoch+1}')
@@ -135,13 +136,14 @@ def tune_lstm(embeddings):
     # Start writing
     output_file = open(output_file_name, 'a')
 
-    grid = {"learning_rate": [0.0001, 0.001, 0.01, 0.1],
+    grid = {"learning_rate": [0.0001, 0.001, 0.01],
             "batch_size": [32],
             "num_epochs": [1],
             "hidden_dim": [128, 256],
             "num_layers": [1, 2, 3],
-            "oversample": [True, False],
-            "dropout": [0, 0.5]}
+            "oversample": [True],
+            "dropout": [0, 0.5],
+            "soft_labels": [True, False]}
 
     best_val_f1 = 0.0
     best_params = None
