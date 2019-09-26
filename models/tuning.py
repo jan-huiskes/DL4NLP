@@ -121,13 +121,17 @@ def train(model_name="LSTM", params=None, embedding="Random"):
 
 
 def tune_lstm(embeddings):
+    # with open('somefile.txt', 'w+') as f:
+    #     # Note that f has now been truncated to 0 bytes, so you'll only
+    #     # be able to read data that you write after this point
+    #     f.write('somedata\n')
 
     output_file_name = "lstm_tuning_" + embeddings + ".txt"
-    output_fle = open(output_file_name, 'w')
-    file_writer = csv.writer(output_fle)
+    output_file = open(output_file_name, 'w')
+    file_writer = csv.writer(output_file)
     grid = {"learning_rate": [0.0001, 0.001, 0.01, 0.1],
             "batch_size": [32],
-            "num_epochs": [5],
+            "num_epochs": [1],
             "hidden_dim": [128, 256],
             "num_layers": [1, 2, 3],
             "oversample": [True, False],
@@ -137,7 +141,7 @@ def tune_lstm(embeddings):
     best_params = None
     for params in ParameterGrid(grid):
         val_f1 = train("LSTM", params, embeddings)
-        file_writer.writerow(str(params) + " " + str(val_f1) + "\n")
+        file_writer.writerow([str(params), str(val_f1)])
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
@@ -163,7 +167,7 @@ def tune_cnn():
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
-    print("Best parameters have validation F1: %f" % val_f1)
+    print("Best parameters have validation F1: %f" % best_val_f1)
     print(best_params)
 
 
