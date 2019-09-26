@@ -1,6 +1,7 @@
 import sys
 import os
 
+from pytorch_transformers import AdamW, WarmupLinearSchedule, BertForSequenceClassification
 from sklearn.metrics import f1_score
 from sklearn.model_selection import ParameterGrid
 import torch.nn as nn
@@ -36,13 +37,20 @@ def train(model_name="LSTM", params=None):
     embedding_dim = 300
     embedding = "Random"  # "Glove" # "Random" # #Both
 
+    if model_name == "Bert":
+        learning_rate = params["learning_rate"]
+        num_warmup_steps = params["num_warmup_steps"]
+        num_total_steps = params["num_total_steps"]
+        embedding = "None"
+
     # Constants
     test_percentage = 0.1
     val_percentage = 0.2
 
     # Load data
     torch.manual_seed(42)
-    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim)
+    dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim,
+                      for_bert=(model_name=="Bert"))
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size , collate_fn= my_collate)
@@ -74,8 +82,9 @@ def train(model_name="LSTM", params=None):
     optimizer = optim.Adam(model.parameters())
     if model_name=="Bert":
         optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
-        # todo: Add scheduler
-        #scheduler = WarmupLinearSchedule(optimizer, warmup_steps=num_warmup_steps, t_total=num_total_steps)
+        # Linear scheduler for adaptive lr
+        scheduler = WarmupLinearSchedule(optimizer, warmup_steps=num_warmup_steps,
+                                         t_total=num_total_steps)
 
     # weighted cross entropy loss, by class counts of other classess
     weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
@@ -83,7 +92,8 @@ def train(model_name="LSTM", params=None):
 
     for epoch in range(num_epochs):
         # train
-        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device)
+        epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device,
+                                            scheduler=scheduler)
 
         # realtime feel
         print(f'Epoch: {epoch+1}')
@@ -149,6 +159,29 @@ def tune_cnn():
     # num_layers = params["num_layers"]
 
 
+def tune_bert():
+    output_fle = open("bert_tuning.txt", 'w')
+    file_writer = csv.writer(output_fle)
+    grid = {"learning_rate": [5e-5, 3e-5, 2e-5],
+            "num_epochs": [2, 3, 4, 5],
+            "batch_size": [16, 32],
+            "num_warmup_steps": [100],
+            "num_total_steps": [1000]
+    }
+    best_val_f1 = 0.0
+    best_params = None
+    for params in ParameterGrid(grid):
+        val_f1 = train("Bert", params)
+        file_writer.writerow([str(params), str(val_f1)])
+        print("Val. F1: ", val_f1)
+        print("=" * 30)
+        if val_f1 > best_val_f1:
+            best_val_f1 = val_f1
+            best_params = params
+    print("Best parameters have validation F1: %f" % val_f1)
+    print(best_params)
+
+
 if __name__ == '__main__':
     # Specify model as command line argument
     if len(sys.argv) > 1:
@@ -162,3 +195,6 @@ if __name__ == '__main__':
     elif model == "CNN":
         print(model)
         tune_cnn()
+    elif model == "Bert":
+        print(model)
+        tune_bert()

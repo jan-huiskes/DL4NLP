@@ -224,8 +224,8 @@ def main():
     embedding = "None" #"Random"#"Glove" # "Both" #
     soft_labels = False
     # Bert parameter
-    num_warmup_steps = 1000
-    num_total_steps = 100
+    num_warmup_steps = 100
+    num_total_steps = 1000
     if model_name == "Bert":
         embedding = "None"
     if embedding == "Both":
