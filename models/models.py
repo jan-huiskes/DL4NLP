@@ -14,8 +14,8 @@ class BernoulliGate(nn.Module):
     def __init__(self, in_features, out_features=1):
         super(BernoulliGate, self).__init__()
 
-        self.layer = Sequential(
-            Linear(in_features, out_features, bias=True)
+        self.layer = nn.Sequential(
+            nn.Linear(in_features, out_features, bias=True)
         )
 
     def forward(self, x):
@@ -25,7 +25,7 @@ class BernoulliGate(nn.Module):
         :return: gate distribution
         """
         logits = self.layer(x)  # [B, T, 1]
-        dist = Bernoulli(logits=logits)
+        dist = torch.Bernoulli(logits=logits)
         return dist
 
     def get_loss(dist, sparsity = 0.0003, coherent_factor = 2.):
@@ -106,24 +106,23 @@ class LSTM(nn.Module):
 
 
     def __init__(self, vocab_size, embedding_dim=128, hidden_dim=128, output_dim=3, batch_size = 10,
-                 lstm_num_layers=1, pad_idx=None, embedding=None, combine = False):
+                 lstm_num_layers=1, pad_idx=None, embedding=None, combine = False, dropout=0):
         super().__init__()
 
+        self.combine = combine
         self.batch_size = batch_size
         if embedding is None:
             self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx = pad_idx)
         else:
             self.embedding = embedding
 
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=lstm_num_layers, batch_first=True)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=lstm_num_layers, batch_first=True, dropout=dropout)
         if combine:
             self.combine = True
             self.embedding_glove = nn.Embedding(vocab_size, embedding_dim, padding_idx = pad_idx)
-            self.lstm = nn.LSTM(embedding_dim*2, hidden_dim, num_layers=lstm_num_layers, batch_first=True)
+            self.lstm = nn.LSTM(embedding_dim*2, hidden_dim, num_layers=lstm_num_layers, batch_first=True, dropout=dropout)
 
         self.fc = nn.Linear(hidden_dim, output_dim)
-
-
 
 
 
