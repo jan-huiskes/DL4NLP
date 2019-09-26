@@ -23,7 +23,7 @@ from keras.preprocessing.sequence import pad_sequences
 from training import *
 
 
-def load_data(oversample, train_data, val_data, batch_size):
+def load_data(oversample, train_data, val_data, batch_size, collate_fn=my_collate):
     """
     Helper function for loading data, with oversample (True or False) and batch_size as parameter.
     """
@@ -34,12 +34,12 @@ def load_data(oversample, train_data, val_data, batch_size):
         oversample_weights = oversample_weights[targets]
         # oversample_weights = torch.tensor([0.9414, 0.2242, 0.8344]) #torch.ones((3))-
         sampler = torch.utils.data.sampler.WeightedRandomSampler(oversample_weights, len(oversample_weights))
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=my_collate,
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=collate_fn,
                                                    sampler=sampler)
     else:
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=my_collate)
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, collate_fn=collate_fn)
 
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, collate_fn=my_collate)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, collate_fn=collate_fn)
 
     return train_loader, val_loader
 
@@ -88,10 +88,8 @@ def train(model_name="LSTM", params=None, embedding="Random"):
                      combine=combine, dropout=dropout)
     elif model_name == "Bert":
         model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
-                                                   collate_fn=bert_collate)
-        val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size,
-                                                 collate_fn=bert_collate)
+        train_loader, val_loader = load_data(oversample, train_data, val_data, batch_size,
+                                             collate_fn=bert_collate)
 
     if not model_name == "Bert":
         model.embedding.weight.data.copy_(dataset.vocab.vectors)
@@ -193,9 +191,10 @@ def tune_cnn():
 def tune_bert():
     output_fle = open("bert_tuning.txt", 'w')
     file_writer = csv.writer(output_fle)
-    grid = {"learning_rate": [5e-5, 3e-5, 2e-5],
-            "num_epochs": [2, 3, 4, 5],
-            "batch_size": [16, 32],
+    grid = {"learning_rate": [3e-5, 2e-5],
+            "num_epochs": [3],
+            "batch_size": [32],
+            "oversample": [True, False],
             "num_warmup_steps": [100],
             "num_total_steps": [1000]
     }
@@ -217,7 +216,10 @@ if __name__ == '__main__':
     # Specify model as command line argument
     if len(sys.argv) > 1:
         model = sys.argv[1]
-        embedding = sys.argv[2] # can be Random, Glove, or Both
+        try:
+            embedding = sys.argv[2]  # can be Random, Glove, or Both
+        except IndexError:
+            embedding = "None"
     else:
         model = "LSTM"
         embedding = "Random"
