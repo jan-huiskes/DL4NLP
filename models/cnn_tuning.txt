@@ -1,0 +1,551 @@
+C:\Users\Kim de Bie\Documents\DL4NLP\models (master -> origin)
+(dl4nlp) λ python tuning.py CNN
+Using Theano backend.
+WARNING (theano.configdefaults): g++ not available, if using conda: `conda install m2w64-toolchain`
+C:\Users\Kim\Anaconda3\envs\dl4nlp\lib\site-packages\theano\configdefaults.py:560: UserWarning: DeprecationWarning: there is no c++ compiler.This is deprecated and with Theano 0.11 a c++ compiler will be mandatory
+  warnings.warn("DeprecationWarning: there is no c++ compiler."
+WARNING (theano.configdefaults): g++ not detected ! Theano will be unable to execute optimized C-implementations (for both CPU and GPU) and will default to Python implementations. Performance will be severely degraded. To remove this warning, set Theano flags cxx to an empty string.
+WARNING (theano.tensor.blas): Using NumPy C-API based implementation for BLAS functions.
+CNN
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.005, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.48858 | Train Acc: 86.84%
+Done
+Current params have F1 of 0.6644039149198464
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.005, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.48858 | Train Acc: 86.84%
+Epoch: 2
+        Train Loss: 0.29119 | Train Acc: 91.20%
+Epoch: 3
+        Train Loss: 0.18163 | Train Acc: 94.52%
+Epoch: 4
+        Train Loss: 0.17350 | Train Acc: 95.54%
+Epoch: 5
+        Train Loss: 0.12131 | Train Acc: 96.73%
+Done
+Current params have F1 of 0.6795559768786044!
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.01, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.61524 | Train Acc: 84.24%
+Done
+Current params have F1 of 0.626936368848742
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.01, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.61524 | Train Acc: 84.24%
+Epoch: 2
+        Train Loss: 0.56479 | Train Acc: 87.51%
+Epoch: 3
+        Train Loss: 0.65990 | Train Acc: 88.83%
+Epoch: 4
+        Train Loss: 0.53908 | Train Acc: 90.85%
+Epoch: 5
+        Train Loss: 0.46783 | Train Acc: 92.10%
+Done
+Current params have F1 of 0.6751741925273024
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.05, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 15.02797 | Train Acc: 68.75%
+Done
+Current params have F1 of 0.17198128412765087
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.05, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 15.02797 | Train Acc: 68.75%
+Epoch: 2
+        Train Loss: 15.76812 | Train Acc: 74.79%
+Epoch: 3
+        Train Loss: 11.01615 | Train Acc: 77.76%
+Epoch: 4
+        Train Loss: 13.99089 | Train Acc: 78.63%
+Epoch: 5
+        Train Loss: 5.30108 | Train Acc: 80.10%
+Done
+Current params have F1 of 0.38744032632987224
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.1, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 87.22717 | Train Acc: 65.95%
+Done
+Current params have F1 of 0.4016848439238608
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.1, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 87.22717 | Train Acc: 65.95%
+Epoch: 2
+        Train Loss: 142.01309 | Train Acc: 74.48%
+Epoch: 3
+        Train Loss: 147.95453 | Train Acc: 75.39%
+Epoch: 4
+        Train Loss: 64.16664 | Train Acc: 77.44%
+Epoch: 5
+        Train Loss: 62.83280 | Train Acc: 78.04%
+Done
+Current params have F1 of 0.3694099033040903
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.5, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 11646.01272 | Train Acc: 63.46%
+Done
+Current params have F1 of 0.38934738065138347
+{'batch_size': 16, 'combine': False, 'filters': 20, 'learning_rate': 0.5, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 11646.01272 | Train Acc: 63.46%
+Epoch: 2
+        Train Loss: 9824.45795 | Train Acc: 66.10%
+Epoch: 3
+        Train Loss: 9526.43362 | Train Acc: 66.84%
+Epoch: 4
+        Train Loss: 19540.31868 | Train Acc: 67.97%
+Epoch: 5
+        Train Loss: 10392.21344 | Train Acc: 66.02%
+Done
+Current params have F1 of 0.35012053934210585
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.005, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.50872 | Train Acc: 85.84%
+Done
+Current params have F1 of 0.6442807309786115
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.005, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.50872 | Train Acc: 85.84%
+Epoch: 2
+        Train Loss: 0.33238 | Train Acc: 90.37%
+Epoch: 3
+        Train Loss: 0.23818 | Train Acc: 93.55%
+Epoch: 4
+        Train Loss: 0.25376 | Train Acc: 94.72%
+Epoch: 5
+        Train Loss: 0.19169 | Train Acc: 95.89%
+Done
+Current params have F1 of 0.6462423409588257
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.01, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.77842 | Train Acc: 82.17%
+Done
+Current params have F1 of 0.5628575340811819
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.01, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.77842 | Train Acc: 82.17%
+Epoch: 2
+        Train Loss: 1.08970 | Train Acc: 84.72%
+Epoch: 3
+        Train Loss: 0.87344 | Train Acc: 87.82%
+Epoch: 4
+        Train Loss: 0.70311 | Train Acc: 89.73%
+Epoch: 5
+        Train Loss: 0.68777 | Train Acc: 90.73%
+Done
+Current params have F1 of 0.6010051325301436
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.05, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 36.48962 | Train Acc: 69.18%
+Done
+Current params have F1 of 0.47504714279489296
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.05, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 36.48962 | Train Acc: 69.18%
+Epoch: 2
+        Train Loss: 56.54133 | Train Acc: 67.90%
+Epoch: 3
+        Train Loss: 49.41071 | Train Acc: 71.47%
+Epoch: 4
+        Train Loss: 33.61605 | Train Acc: 75.26%
+Epoch: 5
+        Train Loss: 24.93508 | Train Acc: 79.93%
+Done
+Current params have F1 of 0.42404460188530124
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.1, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 270.65636 | Train Acc: 70.93%
+Done
+Current params have F1 of 0.4842008874577403
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.1, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 270.65636 | Train Acc: 70.93%
+Epoch: 2
+        Train Loss: 422.69037 | Train Acc: 69.85%
+Epoch: 3
+        Train Loss: 394.73155 | Train Acc: 69.52%
+Epoch: 4
+        Train Loss: 418.76426 | Train Acc: 73.05%
+Epoch: 5
+        Train Loss: 163.72939 | Train Acc: 69.69%
+Done
+Current params have F1 of 0.37539178114270033
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.5, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 31867.00363 | Train Acc: 64.95%
+Done
+Current params have F1 of 0.4839073167480819
+{'batch_size': 16, 'combine': False, 'filters': 50, 'learning_rate': 0.5, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 31867.00363 | Train Acc: 64.95%
+Epoch: 2
+        Train Loss: 43835.05641 | Train Acc: 64.66%
+Epoch: 3
+        Train Loss: 30377.83474 | Train Acc: 67.63%
+Epoch: 4
+        Train Loss: 28586.67320 | Train Acc: 68.99%
+Epoch: 5
+        Train Loss: 11558.29396 | Train Acc: 70.60%
+Done
+Current params have F1 of 0.39018493074068994
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.005, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.53467 | Train Acc: 85.44%
+Done
+Current params have F1 of 0.6818344977971241
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.005, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.53467 | Train Acc: 85.44%
+Epoch: 2
+        Train Loss: 0.39080 | Train Acc: 89.80%
+Epoch: 3
+        Train Loss: 0.37763 | Train Acc: 92.30%
+Epoch: 4
+        Train Loss: 0.30981 | Train Acc: 93.89%
+Epoch: 5
+        Train Loss: 0.21711 | Train Acc: 95.65%
+Done
+Current params have F1 of 0.684181071623517
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.01, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 1.04477 | Train Acc: 81.72%
+Done
+Current params have F1 of 0.6743348790577759
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.01, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 1.04477 | Train Acc: 81.72%
+Epoch: 2
+        Train Loss: 1.57254 | Train Acc: 83.93%
+Epoch: 3
+        Train Loss: 1.50036 | Train Acc: 86.98%
+Epoch: 4
+        Train Loss: 1.33798 | Train Acc: 88.65%
+Epoch: 5
+        Train Loss: 1.48194 | Train Acc: 90.16%
+Done
+Current params have F1 of 0.6675324291139054
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.05, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 73.81367 | Train Acc: 72.97%
+Done
+Current params have F1 of 0.50859633058977
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.05, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 73.81367 | Train Acc: 72.97%
+Epoch: 2
+        Train Loss: 93.28164 | Train Acc: 70.03%
+Epoch: 3
+        Train Loss: 96.54811 | Train Acc: 70.79%
+Epoch: 4
+        Train Loss: 71.94250 | Train Acc: 69.93%
+Epoch: 5
+        Train Loss: 47.59596 | Train Acc: 75.30%
+Done
+Current params have F1 of 0.3834662901991454
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.1, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 500.21941 | Train Acc: 70.91%
+Done
+Current params have F1 of 0.4720136697876977
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.1, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 500.21941 | Train Acc: 70.91%
+Epoch: 2
+        Train Loss: 828.67476 | Train Acc: 70.09%
+Epoch: 3
+        Train Loss: 1054.21484 | Train Acc: 67.07%
+Epoch: 4
+        Train Loss: 470.65527 | Train Acc: 69.00%
+Epoch: 5
+        Train Loss: 401.77424 | Train Acc: 69.80%
+Done
+Current params have F1 of 0.3509400836697076
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.5, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 78434.93306 | Train Acc: 71.51%
+Done
+Current params have F1 of 0.5462498953933311
+{'batch_size': 16, 'combine': False, 'filters': 100, 'learning_rate': 0.5, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 78434.93306 | Train Acc: 71.51%
+Epoch: 2
+        Train Loss: 101561.85028 | Train Acc: 70.01%
+Epoch: 3
+        Train Loss: 85803.95247 | Train Acc: 67.10%
+Epoch: 4
+        Train Loss: 67795.87599 | Train Acc: 68.32%
+Epoch: 5
+        Train Loss: 63113.08350 | Train Acc: 68.65%
+Done
+Current params have F1 of 0.4562435120159525
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.005, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.48453 | Train Acc: 86.40%
+Done
+Current params have F1 of 0.696757221513145
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.005, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.48453 | Train Acc: 86.40%
+Epoch: 2
+        Train Loss: 0.25977 | Train Acc: 91.76%
+Epoch: 3
+        Train Loss: 0.14377 | Train Acc: 95.64%
+Epoch: 4
+        Train Loss: 0.10938 | Train Acc: 96.76%
+Epoch: 5
+        Train Loss: 0.10028 | Train Acc: 97.16%
+Done
+Current params have F1 of 0.7021434122426916
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.01, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.53605 | Train Acc: 85.08%
+Done
+Current params have F1 of 0.6785905786110179
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.01, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.53605 | Train Acc: 85.08%
+Epoch: 2
+        Train Loss: 0.37961 | Train Acc: 89.28%
+Epoch: 3
+        Train Loss: 0.36001 | Train Acc: 91.80%
+Epoch: 4
+        Train Loss: 0.36211 | Train Acc: 92.51%
+Epoch: 5
+        Train Loss: 0.37528 | Train Acc: 93.49%
+Done
+Current params have F1 of 0.6736492445403739
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.05, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 6.32867 | Train Acc: 69.87%
+Done
+Current params have F1 of 0.4915906593845512
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.05, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 6.32867 | Train Acc: 69.87%
+Epoch: 2
+        Train Loss: 9.83227 | Train Acc: 69.83%
+Epoch: 3
+        Train Loss: 10.52240 | Train Acc: 72.97%
+Epoch: 4
+        Train Loss: 9.59937 | Train Acc: 79.94%
+Epoch: 5
+        Train Loss: 9.38694 | Train Acc: 79.16%
+Done
+Current params have F1 of 0.4159906405457623
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.1, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 44.31631 | Train Acc: 66.09%
+Done
+Current params have F1 of 0.4245755454852509
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.1, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 44.31631 | Train Acc: 66.09%
+Epoch: 2
+        Train Loss: 65.55644 | Train Acc: 70.97%
+Epoch: 3
+        Train Loss: 53.62699 | Train Acc: 76.76%
+Epoch: 4
+        Train Loss: 127.85736 | Train Acc: 78.21%
+Epoch: 5
+        Train Loss: 47.60709 | Train Acc: 76.67%
+Done
+Current params have F1 of 0.36647626909668163
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.5, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 5436.19028 | Train Acc: 62.58%
+Done
+Current params have F1 of 0.4002293127367707
+{'batch_size': 32, 'combine': False, 'filters': 20, 'learning_rate': 0.5, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 5436.19028 | Train Acc: 62.58%
+Epoch: 2
+        Train Loss: 6838.42505 | Train Acc: 66.90%
+Epoch: 3
+        Train Loss: 6733.83246 | Train Acc: 68.23%
+Epoch: 4
+        Train Loss: 5063.46179 | Train Acc: 69.23%
+Epoch: 5
+        Train Loss: 628.19308 | Train Acc: 67.75%
+Done
+Current params have F1 of 0.338762561010623
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.005, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.49213 | Train Acc: 86.53%
+Done
+Current params have F1 of 0.7120427961602079
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.005, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.49213 | Train Acc: 86.53%
+Epoch: 2
+        Train Loss: 0.26570 | Train Acc: 91.58%
+Epoch: 3
+        Train Loss: 0.17816 | Train Acc: 94.82%
+Epoch: 4
+        Train Loss: 0.13605 | Train Acc: 96.33%
+Epoch: 5
+        Train Loss: 0.14495 | Train Acc: 96.76%
+Done
+Current params have F1 of 0.6893977928023972
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.01, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.58316 | Train Acc: 84.47%
+Done
+Current params have F1 of 0.6525452065118617
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.01, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.58316 | Train Acc: 84.47%
+Epoch: 2
+        Train Loss: 0.53645 | Train Acc: 87.74%
+Epoch: 3
+        Train Loss: 0.74224 | Train Acc: 88.89%
+Epoch: 4
+        Train Loss: 0.51233 | Train Acc: 91.52%
+Epoch: 5
+        Train Loss: 0.49750 | Train Acc: 93.01%
+Done
+Current params have F1 of 0.6559579335089104
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.05, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 13.25693 | Train Acc: 70.71%
+Done
+Current params have F1 of 0.4927018622010985
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.05, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 13.25693 | Train Acc: 70.71%
+Epoch: 2
+        Train Loss: 23.76760 | Train Acc: 68.00%
+Epoch: 3
+        Train Loss: 21.92017 | Train Acc: 68.39%
+Epoch: 4
+        Train Loss: 20.66449 | Train Acc: 70.94%
+Epoch: 5
+        Train Loss: 20.72043 | Train Acc: 76.77%
+Done
+Current params have F1 of 0.3940343974485357
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.1, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 123.45794 | Train Acc: 68.19%
+Done
+Current params have F1 of 0.3929180805559345
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.1, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 123.45794 | Train Acc: 68.19%
+Epoch: 2
+        Train Loss: 174.58306 | Train Acc: 69.46%
+Epoch: 3
+        Train Loss: 162.41925 | Train Acc: 73.49%
+Epoch: 4
+        Train Loss: 65.57786 | Train Acc: 79.73%
+Epoch: 5
+        Train Loss: 139.63241 | Train Acc: 80.53%
+Done
+Current params have F1 of 0.4174446505366675
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.5, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 10566.10374 | Train Acc: 66.51%
+Done
+Current params have F1 of 0.4723637225351978
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.5, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 10566.10374 | Train Acc: 66.51%
+Epoch: 2
+        Train Loss: 28795.51465 | Train Acc: 63.94%
+Epoch: 3
+        Train Loss: 21951.46481 | Train Acc: 64.91%
+Epoch: 4
+        Train Loss: 11305.76771 | Train Acc: 70.02%
+Epoch: 5
+        Train Loss: 12940.43106 | Train Acc: 71.60%
+Done
+Current params have F1 of 0.40712953414323944
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.005, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.49998 | Train Acc: 86.41%
+Done
+Current params have F1 of 0.6769597837171081
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.005, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.49998 | Train Acc: 86.41%
+Epoch: 2
+        Train Loss: 0.28893 | Train Acc: 91.34%
+Epoch: 3
+        Train Loss: 0.20263 | Train Acc: 94.49%
+Epoch: 4
+        Train Loss: 0.22502 | Train Acc: 95.40%
+Epoch: 5
+        Train Loss: 0.19508 | Train Acc: 96.51%
+Done
+Current params have F1 of 0.6998522934632584
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.01, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 0.67985 | Train Acc: 83.28%
+Done
+Current params have F1 of 0.6319311043948744
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.01, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 0.67985 | Train Acc: 83.28%
+Epoch: 2
+        Train Loss: 0.91784 | Train Acc: 85.90%
+Epoch: 3
+        Train Loss: 0.85315 | Train Acc: 88.40%
+Epoch: 4
+        Train Loss: 0.69615 | Train Acc: 90.77%
+Epoch: 5
+        Train Loss: 0.64305 | Train Acc: 91.45%
+Done
+Current params have F1 of 0.6710336271583044
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.05, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 26.43867 | Train Acc: 71.22%
+Done
+Current params have F1 of 0.5447441588853924
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.05, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 26.43867 | Train Acc: 71.22%
+Epoch: 2
+        Train Loss: 45.67496 | Train Acc: 73.70%
+Epoch: 3
+        Train Loss: 37.42597 | Train Acc: 73.16%
+Epoch: 4
+        Train Loss: 46.26432 | Train Acc: 72.66%
+Epoch: 5
+        Train Loss: 69.26749 | Train Acc: 72.13%
+Done
+Current params have F1 of 0.4540774141701008
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.1, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 223.83630 | Train Acc: 72.44%
+Done
+Current params have F1 of 0.5216310380155752
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.1, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 223.83630 | Train Acc: 72.44%
+Epoch: 2
+        Train Loss: 450.42691 | Train Acc: 75.01%
+Epoch: 3
+        Train Loss: 425.88503 | Train Acc: 73.76%
+Epoch: 4
+        Train Loss: 438.05335 | Train Acc: 74.37%
+Epoch: 5
+        Train Loss: 184.02284 | Train Acc: 71.22%
+Done
+Current params have F1 of 0.4589972204823051
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.5, 'num_epochs': 1}
+Epoch: 1
+        Train Loss: 25601.89034 | Train Acc: 71.12%
+Done
+Current params have F1 of 0.5189356169467748
+{'batch_size': 32, 'combine': False, 'filters': 100, 'learning_rate': 0.5, 'num_epochs': 5}
+Epoch: 1
+        Train Loss: 25601.89034 | Train Acc: 71.12%
+Epoch: 2
+        Train Loss: 61506.03757 | Train Acc: 69.99%
+Epoch: 3
+        Train Loss: 46165.74551 | Train Acc: 66.74%
+Epoch: 4
+        Train Loss: 37485.87825 | Train Acc: 69.85%
+Epoch: 5
+        Train Loss: 29569.14106 | Train Acc: 67.61%
+Done
+Current params have F1 of 0.43916378112478927
+Best parameters have validation F1: 0.439164
+{'batch_size': 32, 'combine': False, 'filters': 50, 'learning_rate': 0.005, 'num_epochs': 1}

@@ -71,7 +71,7 @@ def train(model_name="LSTM", params=None):
     model.to(device)
 
     # optimiser
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), lr=params["learning_rate"])
     if model_name=="Bert":
         optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
         # todo: Add scheduler
@@ -97,7 +97,7 @@ def train(model_name="LSTM", params=None):
 
 def tune_lstm():
 
-    output_fle = open("lstm_tuning.txt", 'w')
+    output_fle = open("lstm_tuning.txt", 'a')
     file_writer = csv.writer(output_fle)
     grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
             "batch_size": [16, 32],
@@ -122,9 +122,6 @@ def tune_lstm():
     num_layers = params["num_layers"]
 
 def tune_cnn():
-
-    output_fle = open("cnn_tuning.txt", 'w')
-    file_writer = csv.writer(output_fle)
     grid = {"learning_rate": [0.005, 0.01, 0.05, 0.1, 0.5], #[2e-4, 2e-5],
             "num_epochs": [1, 5],
             #"embedding_dim": [64, 128, 256],
@@ -135,7 +132,10 @@ def tune_cnn():
     best_params = None
     for params in ParameterGrid(grid):
         val_f1 = train("CNN", params)
-        file_writer.writerow([str(params), str(val_f1)])
+        print(f'Current params have F1 of {val_f1}')
+        with open("cnn_tuning.txt", 'w') as output_fle:
+            file_writer = csv.writer(output_fle)
+            file_writer.writerow([str(params), str(val_f1)])
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_params = params
