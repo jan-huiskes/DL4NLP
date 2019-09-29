@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import pandas as pd
 from tqdm import tqdm
-
+from sklearn.utils.multiclass import unique_labels
+import numpy as np
 sys.path.append('../utils')
 
 from models import CNN, LSTM
@@ -216,20 +217,88 @@ def save_data(data_subset, set):
     df = pd.DataFrame(alldata, columns=lbls)
     df.to_csv(f'../data/{set}.csv')
 
+def plot_confusion_matrix(y_true, y_pred, classes,
+                              normalize=False,
+                              title=None,
+                              cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if not title:
+        if normalize:
+            title = 'Normalized confusion matrix'
+        else:
+            title = 'Confusion matrix, without normalization'
 
+    # Compute confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+    # Only use the labels that appear in the data
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    ax.figure.colorbar(im, ax=ax)
+    # We want to show all ticks...
+    ax.set(xticks=np.arange(cm.shape[1]),
+           yticks=np.arange(cm.shape[0]),
+           # ... and label them with the respective list entries
+           xticklabels=classes, yticklabels=classes,
+           title=title,
+           ylabel='True label',
+           xlabel='Predicted label')
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig.tight_layout()
+    return ax
 
 def main():
     torch.manual_seed(42)
+
+    # Random
+    params = {'batch_size': 32, 'dropout': 0, 'hidden_dim': 128, 'learning_rate': 0.01, 'num_epochs': 5, 'num_layers': 2, 'oversample': False, 'soft_labels': False}
+    # Glove
+    #params = {'batch_size': 32, 'dropout': 0, 'hidden_dim': 128, 'learning_rate': 0.001, 'num_epochs': 5, 'num_layers': 2, 'oversample': False, 'soft_labels': False}
+    # Random
+    #params = {'batch_size': 32, 'dropout': 0, 'hidden_dim': 256, 'learning_rate': 0.0001, 'num_epochs': 5, 'num_layers': 3, 'oversample': False, 'soft_labels': False}
+
     #some params
     experiment_number = 1
     test_percentage = 0.1
     val_percentage = 0.2
-    batch_size= 16
-    num_epochs = 5
+    batch_size= params["batch_size"]
+    num_epochs = 0#params["num_epochs"]
+    dropout = params["dropout"]
     embedding_dim=300
-    model_name = "CNN"#'Bert' #"CNN" #"LSTM"
-    embedding = "Random" #"Random"#"Glove" # "Both" #
-    soft_labels = False
+    model_name = "LSTM"#'Bert' #"CNN" #"LSTM"
+    embedding = "Glove" #"Random"#"Glove" # "Both" #
+    soft_labels = True
+    combine = embedding == "Both"
+
+    # LSTM parameters
+    if model_name == "LSTM":
+        hidden_dim = params["hidden_dim"]
+        num_layers = params["num_layers"]
+
+
     # Bert parameter
     num_warmup_steps = 100
     num_total_steps = 1000
@@ -240,8 +309,8 @@ def main():
         embedding = "Random"
     else:
         combine =False
-    learning_rate = 5e-5 #5e-5, 3e-5, 2e-5
-    oversample_bool = True
+    learning_rate = params["learning_rate"] #5e-5, 3e-5, 2e-5
+    oversample_bool = False
     weighted_loss = True
     # load data
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding,
@@ -274,7 +343,9 @@ def main():
         model = CNN(vocab_size, embedding_dim, combine=combine)
     elif model_name == "LSTM":
         vocab_size = len(dataset.vocab)
-        model = LSTM(vocab_size, embedding_dim, batch_size = batch_size, combine=combine)
+        model = LSTM(vocab_size, embedding_dim, batch_size = batch_size, hidden_dim=hidden_dim, lstm_num_layers=num_layers,
+                     combine=combine, dropout=dropout)
+
     elif model_name == "Bert":
         model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
         train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
@@ -290,7 +361,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     #optimiser
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     if model_name=="Bert":
         optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
         # Linear scheduler for adaptive lr
@@ -340,6 +411,8 @@ def main():
     print('\nCLASSSIFICATION REPORT\n----------------------\n')
     print(class_report)
 
+    plot_confusion_matrix(ground_truth, predictions, classes=["Hate speech","Offensive","Neither"], normalize=False, title='Confusion matrix')
+    plt.show()
 
 if __name__ == '__main__':
 

@@ -59,6 +59,9 @@ def train(model_name="LSTM", params=None, embedding="Random"):
 
     embedding_dim = 300
 
+    if combine:
+        embedding = "Random"
+
     if model_name == "Bert":
         learning_rate = params["learning_rate"]
         num_warmup_steps = params["num_warmup_steps"]
@@ -72,7 +75,7 @@ def train(model_name="LSTM", params=None, embedding="Random"):
     # Load data
     torch.manual_seed(42)
     dataset = Dataset("../data/cleaned_tweets_orig.csv", use_embedding=embedding, embedd_dim=embedding_dim,
-                      for_bert=(model_name=="Bert"))
+                      for_bert=(model_name=="Bert"), combine=combine)
     train_data, val_test_data = split_dataset(dataset, test_percentage + val_percentage )
     val_data, test_data = split_dataset(val_test_data, test_percentage/(test_percentage + val_percentage) )
     train_loader, val_loader, weights = load_data(oversample, train_data, val_data, batch_size)
@@ -150,12 +153,12 @@ def tune_lstm(embeddings):
     # Start writing
     output_file = open(output_file_name, 'a')
 
-    grid = {"learning_rate": [0.0001, 0.001, 0.01],
+    grid = {"learning_rate": [0.0001, 0.001, 0.01, 0.1],
             "batch_size": [32],
-            "num_epochs": [1],
+            "num_epochs": [5],
             "hidden_dim": [128, 256],
             "num_layers": [1, 2, 3],
-            "oversample": [True],
+            "oversample": [False],
             "dropout": [0, 0.5],
             "soft_labels": [False]}
 
