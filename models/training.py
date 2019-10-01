@@ -13,7 +13,7 @@ from sklearn.utils.multiclass import unique_labels
 import numpy as np
 sys.path.append('../utils')
 
-from models import CNN, LSTM
+from models import CNN, LSTM, Rationalisation_model
 from data_loader import Dataset
 from pytorch_transformers import AdamW, BertForSequenceClassification, WarmupLinearSchedule
 
@@ -69,7 +69,7 @@ def weighted_soft_cross_entropy(scores, target, weight = [1,1,1], device = "cuda
         loss+= weight[i] * target[:,i]* (-scores[:,i]+softmax_denominator)
     return torch.sum(loss)
 
-def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False, weights = None, scheduler=None):
+def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False, weights = None, scheduler=None, unsupervised = False):
     epoch_loss, epoch_acc = 0, 0
 
     model.train()
@@ -81,12 +81,21 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
             acc = accuracy(logits, y)
         else:
             predictions = model(x).squeeze(1)
+            mask = (x != 1).to(device)
+
+
             if soft_labels:
                 y_new = y.to(torch.float)
                 y_new = torch.cat((y_new[:, 2]/y_new[:, 1].unsqueeze(0),  y_new[:, 3]/y_new[:, 1].unsqueeze(0), y_new[:, 4]/y_new[:, 1].unsqueeze(0)),dim=0).permute(1,0)
-                loss = criterion(predictions, y_new, weights, device)
+                if unsupervised:
+                    loss =  model.get_loss(predictions, y_new, mask=mask, soft = soft_labels, weights = weights, device = device)
+                else:
+                    loss = criterion(predictions, y_new, weights, device)
             else:
-                loss = criterion(predictions, y[:, 0])
+                if unsupervised:
+                    loss = model.get_loss(predictions, y[:, 0], mask=mask)
+                else:
+                    loss = criterion(predictions, y[:, 0])
             acc = accuracy(predictions, y[:, 0])
 
         loss.backward()
@@ -101,7 +110,7 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
     return epoch_loss / (len(loader)), epoch_acc / (len(loader))
 
 
-def evaluate_epoch(model, loader, criterion, device, is_final = False, soft_labels = False, weights= None):
+def evaluate_epoch(model, loader, criterion, device, is_final = False, soft_labels = False, weights= None, unsupervised = False):
     eval_loss, eval_acc = 0, 0
     if is_final:
         prediction_list = []
@@ -115,12 +124,19 @@ def evaluate_epoch(model, loader, criterion, device, is_final = False, soft_labe
                 acc = accuracy(logits, y)
             else:
                 predictions = model(x).squeeze(1)
+                mask = (x != 1).to(device)
                 if soft_labels:
                     y_new = y.to(torch.float)
                     y_new = torch.cat((y_new[:, 2]/y_new[:, 1].unsqueeze(0),  y_new[:, 3]/y_new[:, 1].unsqueeze(0), y_new[:, 4]/y_new[:, 1].unsqueeze(0)),dim=0).permute(1,0)
-                    loss = criterion(predictions, y_new, weights, device)
+                    if unsupervised:
+                        loss =model.get_loss(predictions, y_new, mask=mask, soft = soft_labels, weights = weights, device = device)
+                    else:
+                        loss = criterion(predictions, y_new, weights, device)
                 else:
-                    loss = criterion(predictions, y[:, 0])
+                    if unsupervised:
+                        loss =  model.get_loss(predictions, y[:, 0], mask=mask)
+                    else:
+                        loss = criterion(predictions, y[:, 0])
                 acc = accuracy(predictions, y[:, 0])
             eval_loss += loss.item()
             eval_acc += acc.item()
@@ -285,11 +301,12 @@ def main():
     test_percentage = 0.1
     val_percentage = 0.2
     batch_size= params["batch_size"]
-    num_epochs = 0#params["num_epochs"]
+    num_epochs = 1#params["num_epochs"]
     dropout = params["dropout"]
     embedding_dim=300
     model_name = "LSTM"#'Bert' #"CNN" #"LSTM"
-    embedding = "Glove" #"Random"#"Glove" # "Both" #
+    unsupervised = True
+    embedding = "Random"#"Glove" ##"Glove" # "Both" #
     soft_labels = True
     combine = embedding == "Both"
 
@@ -353,13 +370,32 @@ def main():
         val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size,
                                                  collate_fn=bert_collate)
 
+    #device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #LOSS : weighted cross entropy loss, by class counts of other classess
+    if weighted_loss:
+        weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
+    else:
+        weights = torch.ones(3, device = device)
+    #weights = torch.tensor([1.0, 1.0, 1.0], device = device) #get_loss_weights(train_data).to(device) # not to run again
+    criterion = nn.CrossEntropyLoss(weight=weights)
+    if soft_labels:
+        criterion = weighted_soft_cross_entropy
+    #latent model
+    if unsupervised:
+        vocab_size = len(dataset.vocab)
+        model =  Rationalisation_model(vocab_size, embedding_dim=embedding_dim, model = model_name, batch_size = batch_size, combine = combine, criterion = criterion )
+
     if not model_name=="Bert":
         model.embedding.weight.data.copy_(dataset.vocab.vectors)
         if combine:
             model.embedding_glove.weight.data.copy_(dataset.glove.vectors)
-    #cuda
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+
+    #model to device
     model.to(device)
+
     #optimiser
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     if model_name=="Bert":
@@ -369,22 +405,13 @@ def main():
     else:
         scheduler = None
 
-    #weighted cross entropy loss, by class counts of other classess
-    if weighted_loss:
-        weights = torch.tensor([0.9414, 0.2242, 0.8344], device = device)
-    else:
-        weights = torch.ones(3, device = device)
-    #weights = torch.tensor([1.0, 1.0, 1.0], device = device) #get_loss_weights(train_data).to(device) # not to run again
-    criterion = nn.CrossEntropyLoss(weight=weights)
-    if soft_labels:
-        criterion = weighted_soft_cross_entropy
     plot_log = defaultdict(list)
     for epoch in range(num_epochs):
         #train and validate
         epoch_loss, epoch_acc = train_epoch(model, train_loader, optimizer, criterion, device,
                                             soft_labels=soft_labels, weights= weights,
-                                            scheduler=scheduler)
-        val_loss, val_acc = evaluate_epoch(model, val_loader, criterion, device, soft_labels=soft_labels, weights= weights)
+                                            scheduler=scheduler, unsupervised = unsupervised)
+        val_loss, val_acc = evaluate_epoch(model, val_loader, criterion, device, soft_labels=soft_labels, weights= weights, unsupervised = unsupervised)
         #save for plotting
         for name, point in zip(["train_loss", "train_accuracy", "val_loss", "val_accuracy"],[epoch_loss, epoch_acc, val_loss, val_acc]):
             plot_log[f'{name}'] = point
@@ -400,7 +427,7 @@ def main():
     #save model
     torch.save(model, os.path.join(results_directory, 'model_cnn.pth'))
     #confusion matrix and all that fun
-    loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True, soft_labels=soft_labels,weights=weights)
+    loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True, soft_labels=soft_labels,weights=weights, unsupervised= unsupervised)
     print(predictions, ground_truth)
     conf_matrix = confusion_matrix(ground_truth, predictions)
     class_report = classification_report(ground_truth, predictions)
