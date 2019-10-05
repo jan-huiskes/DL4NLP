@@ -81,7 +81,7 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
             acc = accuracy(logits, y)
         else:
             predictions = model(x).squeeze(1)
-            mask = (x != 1).to(device)
+            mask = (x != 0).to(device)
 
 
             if soft_labels:
@@ -99,7 +99,6 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
             acc = accuracy(predictions, y[:, 0])
 
         loss.backward()
-
         optimizer.step()
         if scheduler:
             scheduler.step()
@@ -124,7 +123,7 @@ def evaluate_epoch(model, loader, criterion, device, is_final = False, soft_labe
                 acc = accuracy(logits, y)
             else:
                 predictions = model(x).squeeze(1)
-                mask = (x != 1).to(device)
+                mask = (x != 0).to(device)
                 if soft_labels:
                     y_new = y.to(torch.float)
                     y_new = torch.cat((y_new[:, 2]/y_new[:, 1].unsqueeze(0),  y_new[:, 3]/y_new[:, 1].unsqueeze(0), y_new[:, 4]/y_new[:, 1].unsqueeze(0)),dim=0).permute(1,0)
@@ -176,7 +175,7 @@ def my_collate(batch):
     for x,y in batch:
 
         x = x.to(torch.float).permute(1,0)
-        x = nn.functional.pad(x, (0, max_length - x.shape[1]), mode='constant', value=0).permute(1,0)
+        x = nn.functional.pad(x, (0, max_length - x.shape[1]), mode='constant', value=1).permute(1,0)
         new_batch['x'] = torch.cat((new_batch['x'], x), 1)
 
     new_batch['x'] = new_batch['x'].to(dtype=torch.long)
@@ -200,7 +199,7 @@ def bert_collate(batch):
     labels = [s[1][0] for s in batch]
 
     inputs_padded = pad_sequences(inputs, maxlen=MAX_LEN, dtype="long", truncating="post",
-                                  padding="post")
+                                  padding="post", value=1)
     #inputs_padded = pad_sequence(inputs)
 
     x_ids = torch.tensor(inputs_padded)
@@ -286,13 +285,38 @@ def plot_confusion_matrix(y_true, y_pred, classes,
     fig.tight_layout()
     return ax
 
+def sample_sentences_and_z(model, dataloader, device, vocab):
+    sentences = []
+    model.eval()
+    i = 0
+    with torch.no_grad():
+        for batch in tqdm(dataloader):
+            x, y = batch[0].to(device), batch[1].to(torch.long).to(device)
+
+            z_mask,masked_x, y, z = model(x, True)
+            sentences.append((x.t(), masked_x.t(), z.t()))
+            if i==0:
+                break
+    out = []
+    print("!!!!"*10)
+    print(vocab.stoi["<pad>"])
+    print(vocab.itos[1])
+    for (x, masked_x, z) in sentences:
+        #for sentence in zip(x, masked_x):
+        for (full_sentence, masked_sentence, z_s) in zip(x,masked_x, z):
+            for (full_index, masked_index, z_i) in zip(full_sentence, masked_sentence, z_s):
+                print(vocab.itos[full_index], vocab.itos[masked_index], z_i,vocab.itos[z_i] )
+                #full =
+            #out.append()
+    return sentences
+
 def main():
     torch.manual_seed(42)
 
     # Random
-    params = {'batch_size': 32, 'dropout': 0, 'hidden_dim': 128, 'learning_rate': 0.01, 'num_epochs': 5, 'num_layers': 2, 'oversample': False, 'soft_labels': False}
+    #params = {'batch_size': 32, 'dropout': 0, 'hidden_dim': 128, 'learning_rate': 0.01, 'num_epochs': 5, 'num_layers': 2, 'oversample': False, 'soft_labels': False}
     # Glove
-    #params = {'batch_size': 32, 'dropout': 0, 'hidden_dim': 128, 'learning_rate': 0.001, 'num_epochs': 5, 'num_layers': 2, 'oversample': False, 'soft_labels': False}
+    params = {'batch_size': 32, 'dropout': 0, 'hidden_dim': 128, 'learning_rate': 0.001, 'num_epochs': 5, 'num_layers': 2, 'oversample': False, 'soft_labels': False}
     # Random
     #params = {'batch_size': 32, 'dropout': 0, 'hidden_dim': 256, 'learning_rate': 0.0001, 'num_epochs': 5, 'num_layers': 3, 'oversample': False, 'soft_labels': False}
 
@@ -304,10 +328,10 @@ def main():
     num_epochs = 1#params["num_epochs"]
     dropout = params["dropout"]
     embedding_dim=300
-    model_name = "LSTM"#'Bert' #"CNN" #"LSTM"
+    model_name = "CNN"#'Bert' #"CNN" #"LSTM"
     unsupervised = True
-    embedding = "Random"#"Glove" ##"Glove" # "Both" #
-    soft_labels = True
+    embedding = "Glove"#"Random" ##"Glove" # "Both" #
+    soft_labels = False
     combine = embedding == "Both"
 
     # LSTM parameters
@@ -341,9 +365,10 @@ def main():
     # print(len(train_data))
     #save_data(train_data, 'train')
     #save_data(test_data, 'test')
-    weights, targets = get_loss_weights(train_data, return_targets = True)
+
     #define loaders
     if oversample_bool:
+        weights, targets = get_loss_weights(train_data, return_targets = True)
         class_sample_count = [1024/20, 13426, 2898/2] # dataset has 10 class-1 samples, 1 class-2 samples, etc.
         oversample_weights = 1 / torch.Tensor(class_sample_count)
         oversample_weights = oversample_weights[targets]
@@ -384,6 +409,7 @@ def main():
     #latent model
     if unsupervised:
         vocab_size = len(dataset.vocab)
+        criterion = nn.CrossEntropyLoss(weight=weights, reduction='none')
         model =  Rationalisation_model(vocab_size, embedding_dim=embedding_dim, model = model_name, batch_size = batch_size, combine = combine, criterion = criterion )
 
     if not model_name=="Bert":
@@ -398,6 +424,7 @@ def main():
 
     #optimiser
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
     if model_name=="Bert":
         optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
         # Linear scheduler for adaptive lr
@@ -419,6 +446,8 @@ def main():
         print(f'Epoch: {epoch+1}')
         print(f'\tTrain Loss: {epoch_loss:.5f} | Train Acc: {epoch_acc*100:.2f}%')
         print(f'\t Val. Loss: {val_loss:.5f} |  Val. Acc: {val_acc*100:.2f}%')
+    print(dataset.vocab.stoi["<pad>"])
+    sample_sentences_and_z(model, train_loader, device, dataset.vocab)
     #save plot
     results_directory = f'plots/{experiment_number}'
     os.makedirs(results_directory, exist_ok=True)

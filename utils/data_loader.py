@@ -148,7 +148,7 @@ class Dataset(data.Dataset):
         # Tokenize them
         tokenized = [text_processer.preprocess(x) for x in clean_tweets]
         text_processer.build_vocab(tokenized, max_size=None, min_freq=1,
-                                   specials=['<unk>', '<pad>'], vectors=vectors,
+                                   specials=[ '<unk>','<pad>'], vectors=vectors,
                                    unk_init=None, vectors_cache=None, specials_first=True)
         text_processer.vocab.dim = dim
         return text_processer.vocab
