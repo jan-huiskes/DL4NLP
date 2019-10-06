@@ -99,6 +99,8 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
             acc = accuracy(predictions, y[:, 0])
 
         loss.backward()
+        params = model.parameters()
+
         optimizer.step()
         if scheduler:
             scheduler.step()
@@ -199,7 +201,7 @@ def bert_collate(batch):
     labels = [s[1][0] for s in batch]
 
     inputs_padded = pad_sequences(inputs, maxlen=MAX_LEN, dtype="long", truncating="post",
-                                  padding="post", value=1)
+                                  padding="post")
     #inputs_padded = pad_sequence(inputs)
 
     x_ids = torch.tensor(inputs_padded)
@@ -305,7 +307,7 @@ def sample_sentences_and_z(model, dataloader, device, vocab):
         #for sentence in zip(x, masked_x):
         for (full_sentence, masked_sentence, z_s) in zip(x,masked_x, z):
             for (full_index, masked_index, z_i) in zip(full_sentence, masked_sentence, z_s):
-                print(vocab.itos[full_index], vocab.itos[masked_index], z_i,vocab.itos[z_i] )
+                print(vocab.itos[full_index], vocab.itos[masked_index] )
                 #full =
             #out.append()
     return sentences
