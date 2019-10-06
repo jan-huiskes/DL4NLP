@@ -94,11 +94,13 @@ class LSTM(nn.Module):
 
 class BernoulliGate(nn.Module):
 
-    def __init__(self, in_features, out_features=1):
+    def __init__(self, in_features, out_features=1, hid_dim = 256):
         super().__init__()
 
         self.layer = nn.Sequential(
-            nn.Linear(in_features, out_features, bias=True)
+            nn.Linear(in_features, hid_dim, bias=True),
+            nn.ReLU(),
+            nn.Linear(hid_dim, out_features, bias=True)
         )
 
     def forward(self, x):
@@ -106,35 +108,22 @@ class BernoulliGate(nn.Module):
         dist = torch.distributions.bernoulli.Bernoulli(logits=logits)
         return dist
 
-class ZEncoder(nn.Module):
-    def __init__(self,embedding =None, emb_size = 300, hidden = 200):
-        super().__init__()
-        self.embedding = embedding
-        self.lstm = nn.LSTM(emb_size, hidden, batch_first=True, bidirectional=True)
-
-    def forward(self, x, pads, lengths):
-        x = x.permute(1,0)
-        emb = self.embedding(x)
-        emb = emb.to(dtype=torch.float)
-        #packed_sequence = pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
-        outputs, (hx, cx) = self.lstm(emb)
-        #outputs, _ = pad_packed_sequence(outputs, batch_first=True)
-        return outputs, 1
-
-class ZGenerator(nn.Module):
+class ZGenerator( nn.Module):
     def __init__(self, embedding = None, hidden = 200):
         super().__init__()
         emb_size = embedding.weight.shape[1]
-        enc_size = hidden * 2
+        enc_size = emb_size#hidden*2
 
-        self.encoder = ZEncoder( embedding , emb_size, hidden)
+        self.embedding = embedding
         self.bernoulli = BernoulliGate(enc_size)
         self.z_dist = None
         self.z=0
+
     def forward(self, x, no_pads):
-        lengths = no_pads.long().sum(0)
-        h, _ = self.encoder(x, no_pads, lengths)
-        z_dist = self.bernoulli(h)
+        x = x.permute(1,0)
+        emb = self.embedding(x)
+        emb = emb.to(dtype=torch.float)
+        z_dist = self.bernoulli(emb)
         self.z_dist = z_dist
         z = z_dist.sample()
         z = z.squeeze(-1)
@@ -147,7 +136,7 @@ class ZGenerator(nn.Module):
 class Rationalisation_model(nn.Module):
 
     def __init__(self, vocab_size, embedding_dim=300, model = "CNN",hidden_dim=128, output_dim=3, n_filters = 50,
-                 filters = [2,3,4], lstm_num_layers = 2,  batch_size = 10, dropout = 0, pad_idx=None, embedding=None, combine = False, lambda_1 = 0.0001, lambda_2 =0.0001, criterion = None ):
+                 filters = [2,3,4], lstm_num_layers = 2,  batch_size = 10, dropout = 0, pad_idx=None, embedding=None, combine = False, lambda_1 = 0.2, lambda_2 =0, criterion = None ):
         super().__init__()
 
         self.embedding  = nn.Embedding(vocab_size, embedding_dim, padding_idx=pad_idx)
@@ -171,7 +160,7 @@ class Rationalisation_model(nn.Module):
         y = self.encoder(x, z=z)
 
         #for print/sampling purposes
-        z = z.to(dtype=torch.uint8, device= "cuda:0").t()
+        z = z.to(dtype=torch.bool, device= "cuda:0").t()
         z_mask = (mask* z)
         masked_x = torch.where(z_mask, x, torch.ones(x.size(), device = "cuda:0").long())
         if not sample:
@@ -190,18 +179,18 @@ class Rationalisation_model(nn.Module):
         loss = loss_vec.mean()
 
         z = self.generator.z.squeeze()
-
-        logp_z0 = self.generator.z_dist.log_prob(0.).squeeze(2)
-        logp_z1 = self.generator.z_dist.log_prob(1.).squeeze(2)
-
-        logpz = torch.where(z == 0, logp_z0, logp_z1)
-        logpz = torch.where(mask.t(), logpz, logpz.new_zeros([1]))
-
         zsum = z.sum(1)
         zdiff = z[:, 1:] - z[:, :-1]
         zdiff = zdiff.abs().sum(1)
 
-        cost_vec =  zsum * self.lambda_1 + zdiff * self.lambda_2 #+loss_vec.detach()
-        cost_logpz = (cost_vec * logpz.sum(1)).mean(0)
-        total_loss = cost_logpz #+loss
+        reg_vec =  zsum * self.lambda_1 + zdiff * self.lambda_2 +loss_vec.detach()
+        logp_z0 = self.generator.z_dist.log_prob(0.).squeeze(2)
+        logp_z1 = self.generator.z_dist.log_prob(1.).squeeze(2)
+        logpz = torch.where(z == 0, logp_z0, logp_z1)
+        logpz = torch.where(mask.t(), logpz, logpz.new_zeros([1]))
+
+
+
+        cost_logpz = (reg_vec * logpz.sum(1)).mean(0)
+        total_loss =  cost_logpz + loss
         return total_loss

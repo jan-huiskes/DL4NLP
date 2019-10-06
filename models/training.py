@@ -73,7 +73,7 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
     epoch_loss, epoch_acc = 0, 0
 
     model.train()
-    for batch in tqdm(loader):
+    for batch in loader:
         optimizer.zero_grad()
         x, y = batch[0].to(device), batch[1].to(torch.long).to(device)
         if type(model) is BertForSequenceClassification:
@@ -94,6 +94,8 @@ def train_epoch(model, loader, optimizer, criterion, device, soft_labels = False
             else:
                 if unsupervised:
                     loss = model.get_loss(predictions, y[:, 0], mask=mask)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(),
+                                                   max_norm=10)
                 else:
                     loss = criterion(predictions, y[:, 0])
             acc = accuracy(predictions, y[:, 0])
@@ -118,7 +120,7 @@ def evaluate_epoch(model, loader, criterion, device, is_final = False, soft_labe
         ground_truth = []
     model.eval()
     with torch.no_grad():
-        for batch in tqdm(loader):
+        for batch in loader:
             x, y = batch[0].to(device), batch[1].to(torch.long).to(device)
             if type(model) is BertForSequenceClassification:
                 loss, logits = model(x, labels=y)
@@ -292,7 +294,7 @@ def sample_sentences_and_z(model, dataloader, device, vocab):
     model.eval()
     i = 0
     with torch.no_grad():
-        for batch in tqdm(dataloader):
+        for batch in dataloader:
             x, y = batch[0].to(device), batch[1].to(torch.long).to(device)
 
             z_mask,masked_x, y, z = model(x, True)
@@ -327,7 +329,7 @@ def main():
     test_percentage = 0.1
     val_percentage = 0.2
     batch_size= params["batch_size"]
-    num_epochs = 1#params["num_epochs"]
+    num_epochs = 5#params["num_epochs"]
     dropout = params["dropout"]
     embedding_dim=300
     model_name = "CNN"#'Bert' #"CNN" #"LSTM"
@@ -448,7 +450,6 @@ def main():
         print(f'Epoch: {epoch+1}')
         print(f'\tTrain Loss: {epoch_loss:.5f} | Train Acc: {epoch_acc*100:.2f}%')
         print(f'\t Val. Loss: {val_loss:.5f} |  Val. Acc: {val_acc*100:.2f}%')
-    print(dataset.vocab.stoi["<pad>"])
     sample_sentences_and_z(model, train_loader, device, dataset.vocab)
     #save plot
     results_directory = f'plots/{experiment_number}'
@@ -459,7 +460,6 @@ def main():
     torch.save(model, os.path.join(results_directory, 'model_cnn.pth'))
     #confusion matrix and all that fun
     loss, acc, predictions, ground_truth = evaluate_epoch(model, val_loader, criterion, device, is_final=True, soft_labels=soft_labels,weights=weights, unsupervised= unsupervised)
-    print(predictions, ground_truth)
     conf_matrix = confusion_matrix(ground_truth, predictions)
     class_report = classification_report(ground_truth, predictions)
     print('\nFinal Loss and Accuracy\n----------------\n')
